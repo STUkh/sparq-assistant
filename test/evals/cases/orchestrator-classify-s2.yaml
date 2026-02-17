@@ -1,0 +1,13 @@
+name: "Orchestrator classification: S2 manual to E2E conversion"
+scenario: classification
+input:
+  type: text
+  identifier: "Convert these manual tests to Playwright E2E code"
+expected_outputs:
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S2"'
+rubrics:
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance

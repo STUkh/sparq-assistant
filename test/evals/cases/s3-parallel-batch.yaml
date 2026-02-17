@@ -1,0 +1,45 @@
+name: "S3: Parallel batch generation (>30 tests)"
+scenario: S3
+input:
+  type: jira
+  identifier: "EP-100"
+  fixtures:
+    jira: fixtures/jira-ticket-login.json
+    conventions: fixtures/project-conventions.md
+  parallel: true
+  batch_count: 2
+expected_outputs:
+  - path: "e2e/specs/auth/login.spec.ts"
+    checks:
+      - has_pattern: "import .+ from '.*fixtures'"
+      - no_pattern: "from '@playwright/test'"
+      - min_test_count: 3
+  - path: "e2e/specs/auth/registration.spec.ts"
+    checks:
+      - has_pattern: "import .+ from '.*fixtures'"
+      - no_pattern: "from '@playwright/test'"
+      - min_test_count: 3
+  - path: "e2e/pages/index.ts"
+    checks:
+      - has_pattern: "export \\{ \\w+ \\} from '\\."
+      - no_pattern: "export \\{ (\\w+) \\}[\\s\\S]*export \\{ \\1 \\}"
+  - path: ".sparq/tracking/test-registry.json"
+    checks:
+      - has_pattern: '"version"'
+      - has_pattern: '"entries"'
+      - has_pattern: '"lastUpdated"'
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"parallel"'
+      - has_pattern: '"taskId"'
+      - has_pattern: '"totalTasks"\s*:\s*2'
+      - has_pattern: '"filesWritten"'
+rubrics:
+  - playwright-syntax
+  - format-compliance
+  - parallel-merge
+  - naming-conventions
+  - handoff-compliance
+  - assertion-detection
+  - executability-check
+  - requirement-coverage

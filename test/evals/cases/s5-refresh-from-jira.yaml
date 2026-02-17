@@ -1,0 +1,23 @@
+name: "S5: Refresh tests from updated Jira requirements"
+scenario: S5
+input:
+  type: jira
+  identifier: "EP-14"
+  fixtures:
+    jira: fixtures/jira-ticket-login.json
+expected_outputs:
+  - path: ".sparq/refresh/REFRESH-login-diff.md"
+    checks:
+      - has_section: "Diff Summary"
+      - has_pattern: \b(NEW|CHANGED|REMOVED|UNCHANGED)\b
+      - has_severity_counts: true
+  - path: ".sparq/tracking/test-registry.json"
+    checks:
+      - has_pattern: "requirementsHash"
+      - has_pattern: "lastRefreshedAt"
+rubrics:
+  - format-compliance
+  - coverage-completeness
+  - naming-conventions
+  - template-compliance
+  - requirement-coverage

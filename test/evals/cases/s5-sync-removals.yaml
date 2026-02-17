@@ -1,0 +1,24 @@
+name: "S5: Sync with removed requirements"
+scenario: S5
+input:
+  type: jira
+  identifier: "EP-14"
+  fixtures:
+    jira: fixtures/jira-ticket-login-reduced.json
+expected_outputs:
+  - path: ".sparq/refresh/REFRESH-login-diff.md"
+    checks:
+      - has_section: "Diff Summary"
+      - has_pattern: \bREMOVED\b
+      - has_pattern: \b(NEW|CHANGED|UNCHANGED)\b
+      - has_severity_counts: true
+  - path: ".sparq/tracking/test-registry.json"
+    checks:
+      - has_pattern: "requirementsHash"
+      - has_pattern: "lastRefreshedAt"
+      - has_pattern: "entries"
+rubrics:
+  - format-compliance
+  - template-compliance
+  - naming-conventions
+  - requirement-coverage

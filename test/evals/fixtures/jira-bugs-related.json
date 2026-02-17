@@ -1,0 +1,68 @@
+[
+  {
+    "key": "BUG-55",
+    "fields": {
+      "summary": "Form validation bypass on paste",
+      "issuetype": { "name": "Bug" },
+      "status": { "name": "Open" },
+      "priority": { "name": "High" },
+      "description": "## Steps to Reproduce\n1. Navigate to /settings/profile\n2. Clear the display name field\n3. Paste a value that exceeds the 50-character limit (e.g., paste 100 chars)\n4. Click Save\n\n## Expected Behavior\nClient-side validation catches the invalid input and shows an inline error before the form is submitted.\n\n## Actual Behavior\nThe form submits successfully, bypassing client-side validation. The server returns a 422 error, but the user sees a generic \"Something went wrong\" toast instead of a field-level validation message.\n\n## Affected Component\nProfileForm.vue — the `validateDisplayName()` method only triggers on `@input` events, not `@paste` events.\n\n## Browser\nChrome 120, Firefox 121, Safari 17",
+      "components": [{ "name": "ProfileForm" }],
+      "labels": ["regression-candidate", "validation", "paste"],
+      "fixVersions": [{ "name": "2.4.0" }],
+      "reporter": { "displayName": "QA Team" },
+      "created": "2025-01-18T09:15:00.000Z",
+      "updated": "2025-01-18T11:30:00.000Z",
+      "issuelinks": [
+        {
+          "type": {
+            "name": "Related",
+            "inward": "is related to",
+            "outward": "is related to"
+          },
+          "outwardIssue": {
+            "key": "BUG-56",
+            "fields": {
+              "summary": "Form reset clears unrelated fields",
+              "status": { "name": "Open" },
+              "issuetype": { "name": "Bug" }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "key": "BUG-56",
+    "fields": {
+      "summary": "Form reset clears unrelated fields",
+      "issuetype": { "name": "Bug" },
+      "status": { "name": "Open" },
+      "priority": { "name": "High" },
+      "description": "## Steps to Reproduce\n1. Navigate to /settings\n2. Modify the display name in the Profile section\n3. Modify a notification toggle in the Notifications section\n4. Click the \"Reset\" button in the Notifications section\n\n## Expected Behavior\nOnly the notification settings revert to their saved state. Profile changes remain unsaved but intact.\n\n## Actual Behavior\nBoth the notification settings AND the profile display name revert to their saved state. The user loses their unsaved profile changes.\n\n## Affected Component\nProfileForm.vue — the `resetForm()` method uses a shared Pinia store `useSettingsStore()` and calls `$reset()` on the entire store, which affects all settings sections, not just notifications.\n\n## Impact\nUsers lose unsaved work in other settings sections. Particularly frustrating if they uploaded a new avatar (upload is lost too).\n\n## Browser\nAll browsers — this is a logic issue, not a rendering issue.",
+      "components": [{ "name": "ProfileForm" }],
+      "labels": ["regression-candidate", "state-management", "reset"],
+      "fixVersions": [{ "name": "2.4.0" }],
+      "reporter": { "displayName": "QA Team" },
+      "created": "2025-01-18T10:00:00.000Z",
+      "updated": "2025-01-18T12:45:00.000Z",
+      "issuelinks": [
+        {
+          "type": {
+            "name": "Related",
+            "inward": "is related to",
+            "outward": "is related to"
+          },
+          "outwardIssue": {
+            "key": "BUG-55",
+            "fields": {
+              "summary": "Form validation bypass on paste",
+              "status": { "name": "Open" },
+              "issuetype": { "name": "Bug" }
+            }
+          }
+        }
+      ]
+    }
+  }
+]

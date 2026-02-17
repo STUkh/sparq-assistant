@@ -1,0 +1,13 @@
+name: "Orchestrator classification: S2 with TMS read"
+scenario: classification
+input:
+  type: text
+  identifier: "Convert my TestRail suite 42 in project 1 to Playwright E2E tests"
+expected_outputs:
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S2"'
+rubrics:
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance

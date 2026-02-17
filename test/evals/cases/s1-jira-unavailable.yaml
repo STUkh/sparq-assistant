@@ -1,0 +1,30 @@
+name: "S1: Jira unavailable during requirements gathering"
+scenario: S1
+input:
+  type: jira
+  identifier: "PROJ-456"
+  fixtures:
+    jira: null
+  mcp_errors:
+    - source: jira
+      error: "Connection refused"
+      code: 503
+expected_outputs:
+  - path: ".sparq/requirements/REQ-auth.md"
+    checks:
+      - has_pattern: "REQ-auth-\\d{3}"
+      - has_pattern: "SRC-(?:C|F|L)"
+      - has_section: "Gaps"
+      - has_pattern: "[Jj]ira.*(?:[Uu]navailable|[Ff]ailed|[Cc]onnection [Rr]efused)"
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: "partial"
+      - has_pattern: "gaps"
+      - has_pattern: "[Jj]ira.*[Ff]allback"
+rubrics:
+  - error-handling-compliance
+  - format-compliance
+  - naming-conventions
+  - progress-signal-compliance
+  - handoff-compliance
+  - requirement-coverage

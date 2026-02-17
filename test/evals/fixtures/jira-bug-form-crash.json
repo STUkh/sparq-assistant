@@ -1,0 +1,16 @@
+{
+  "key": "BUG-42",
+  "fields": {
+    "summary": "Form crashes on submit when email field contains unicode characters",
+    "issuetype": { "name": "Bug" },
+    "status": { "name": "Open" },
+    "priority": { "name": "Critical" },
+    "description": "## Steps to Reproduce\n1. Navigate to /settings/profile\n2. Enter an email with unicode chars (e.g., t\u00ebst@example.com)\n3. Click Save\n\n## Expected Behavior\nForm validates email and shows appropriate error or saves successfully.\n\n## Actual Behavior\nPage crashes with unhandled TypeError. Console shows: `Cannot read properties of undefined (reading 'normalize')`.\n\n## Affected Component\nProfileForm.vue - email validation logic in `validateEmail()` method.",
+    "components": [{ "name": "Settings" }, { "name": "Profile" }],
+    "labels": ["bug", "regression", "unicode"],
+    "fixVersions": [{ "name": "2.3.1" }],
+    "reporter": { "displayName": "QA Team" },
+    "created": "2025-01-15T10:30:00.000Z",
+    "updated": "2025-01-15T14:22:00.000Z"
+  }
+}

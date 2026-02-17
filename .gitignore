@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Coverage
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+*.swp
+*.swo
+*~
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+.mcp.json
+
+# npm
+*.tgz
+npm-debug.log*
+
+# SparQ runtime output (generated in target projects)
+.sparq/
+
+# Biome cache
+.biome/
+
+# Temp files
+tmp/
+temp/
+*.tmp
+
+# Project generated tests
+e2e/
+
+# Eval data — transient per-developer files
+test/evals/data/runs/
+test/evals/data/reflections/
+test/evals/data/tune-history/
+test/evals/data/.optimize-pending
+# baselines/ is committed (gold standard, shared across team)

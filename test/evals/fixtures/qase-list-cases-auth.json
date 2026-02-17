@@ -1,0 +1,149 @@
+{
+  "result": {
+    "entities": [
+      {
+        "id": 301,
+        "title": "Verify successful login",
+        "suite_id": 10,
+        "severity": 2,
+        "priority": 1,
+        "preconditions": "User has valid credentials",
+        "postconditions": "User session is active",
+        "steps_type": "classic",
+        "steps": [
+          {
+            "position": 1,
+            "action": "Navigate to /login",
+            "expected_result": "Login form displayed",
+            "data": ""
+          },
+          {
+            "position": 2,
+            "action": "Enter valid email and password",
+            "expected_result": "Fields accept input",
+            "data": "test.user@example.com / P@ssw0rd123!"
+          },
+          {
+            "position": 3,
+            "action": "Click Sign In",
+            "expected_result": "Redirect to /dashboard",
+            "data": ""
+          }
+        ],
+        "tags": [{ "title": "HP" }, { "title": "smoke" }],
+        "refs": "EP-14"
+      },
+      {
+        "id": 302,
+        "title": "Verify Remember Me checkbox",
+        "suite_id": 10,
+        "severity": 3,
+        "priority": 2,
+        "preconditions": "User has valid credentials",
+        "postconditions": "",
+        "steps_type": "classic",
+        "steps": [
+          {
+            "position": 1,
+            "action": "Navigate to /login",
+            "expected_result": "Login form displayed",
+            "data": ""
+          },
+          {
+            "position": 2,
+            "action": "Check Remember Me and login",
+            "expected_result": "Session persists after browser restart",
+            "data": ""
+          }
+        ],
+        "tags": [{ "title": "HP" }],
+        "refs": "EP-14"
+      },
+      {
+        "id": 303,
+        "title": "Verify error on empty password",
+        "suite_id": 11,
+        "severity": 2,
+        "priority": 1,
+        "preconditions": "User is on login page",
+        "postconditions": "",
+        "steps_type": "classic",
+        "steps": [
+          {
+            "position": 1,
+            "action": "Enter email but leave password empty",
+            "expected_result": "Validation error shown",
+            "data": ""
+          },
+          {
+            "position": 2,
+            "action": "Click Sign In",
+            "expected_result": "Form does not submit",
+            "data": ""
+          }
+        ],
+        "tags": [{ "title": "VE" }],
+        "refs": "EP-14"
+      },
+      {
+        "id": 304,
+        "title": "Verify XSS protection in login fields",
+        "suite_id": 12,
+        "severity": 1,
+        "priority": 1,
+        "preconditions": "User is on login page",
+        "postconditions": "",
+        "steps_type": "classic",
+        "steps": [
+          {
+            "position": 1,
+            "action": "Enter <script>alert(1)</script> in email field",
+            "expected_result": "Input sanitized, no script execution",
+            "data": ""
+          }
+        ],
+        "tags": [{ "title": "SEC" }],
+        "refs": "EP-14"
+      },
+      {
+        "id": 305,
+        "title": "Verify keyboard navigation on login form",
+        "suite_id": 13,
+        "severity": 3,
+        "priority": 2,
+        "preconditions": "Login page loaded",
+        "postconditions": "",
+        "steps_type": "classic",
+        "steps": [
+          {
+            "position": 1,
+            "action": "Tab through all form elements",
+            "expected_result": "Focus ring visible on each element",
+            "data": ""
+          },
+          {
+            "position": 2,
+            "action": "Press Enter on Sign In button",
+            "expected_result": "Form submits",
+            "data": ""
+          }
+        ],
+        "tags": [{ "title": "A11Y" }],
+        "refs": "EP-14"
+      },
+      {
+        "id": 306,
+        "title": "Incomplete case no steps",
+        "suite_id": 10,
+        "severity": 4,
+        "priority": 2,
+        "preconditions": "",
+        "postconditions": "",
+        "steps_type": "classic",
+        "steps": [],
+        "tags": [],
+        "refs": ""
+      }
+    ]
+  }
+}

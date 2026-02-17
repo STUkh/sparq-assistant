@@ -1,0 +1,44 @@
+{
+  "sections": [
+    {
+      "id": 101,
+      "name": "Happy Path",
+      "description": "Core login scenarios",
+      "parent_id": null,
+      "depth": 0,
+      "display_order": 1
+    },
+    {
+      "id": 102,
+      "name": "Validation & Error",
+      "description": "Error handling scenarios",
+      "parent_id": null,
+      "depth": 0,
+      "display_order": 2
+    },
+    {
+      "id": 103,
+      "name": "Security",
+      "description": "Security test cases",
+      "parent_id": null,
+      "depth": 0,
+      "display_order": 3
+    },
+    {
+      "id": 104,
+      "name": "Edge Cases",
+      "description": "Boundary conditions",
+      "parent_id": null,
+      "depth": 0,
+      "display_order": 4
+    },
+    {
+      "id": 105,
+      "name": "Accessibility",
+      "description": "A11Y test cases",
+      "parent_id": null,
+      "depth": 0,
+      "display_order": 5
+    }
+  ]
+}

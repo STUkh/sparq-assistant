@@ -1,0 +1,33 @@
+name: "S2: Manual to E2E with TestRail export"
+scenario: S2
+input:
+  type: file_path
+  identifier: ".sparq/test-cases/TC-login-manual.md"
+  fixtures:
+    local: fixtures/manual-test-cases-login.md
+    conventions: fixtures/project-conventions.md
+  tms:
+    provider: testrail
+    project_id: "P1"
+expected_outputs:
+  - path: "e2e/pages/LoginPage.ts"
+    checks:
+      - has_pattern: "class LoginPage extends"
+      - has_pattern: "get .+\\(\\): Locator"
+  - path: "e2e/specs/login/login.spec.ts"
+    checks:
+      - has_pattern: "import .+ from"
+      - no_pattern: "from '@playwright/test'"
+      - min_test_count: 5
+  - path: ".sparq/exports/testrail-export.xml"
+    checks:
+      - has_pattern: "<sections>"
+      - has_pattern: "<case>"
+      - has_pattern: "TC-login-"
+rubrics:
+  - playwright-syntax
+  - format-compliance
+  - naming-conventions
+  - assertion-detection
+  - executability-check
+  - requirement-coverage

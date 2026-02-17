@@ -1,0 +1,37 @@
+name: "S1: Multi-source requirements (Jira + Confluence + Figma)"
+scenario: S1
+input:
+  type: jira
+  identifier: "EP-14"
+  fixtures:
+    jira: fixtures/jira-ticket-login.json
+    confluence: fixtures/confluence-page-login.json
+    figma: fixtures/figma-design-login.json
+expected_outputs:
+  - path: ".sparq/requirements/REQ-login.md"
+    checks:
+      - has_section: "Requirements"
+      - has_pattern: "REQ-login-\\d{3}"
+      - has_pattern: "SRC-J"
+      - has_pattern: "SRC-C"
+      - has_pattern: "SRC-F"
+      - min_count: 5
+  - path: ".sparq/test-cases/TC-login-manual.md"
+    checks:
+      - has_pattern: "TC-login-HP-\\d{3}"
+      - has_pattern: "TC-login-VE-\\d{3}"
+      - has_pattern: "TC-login-SEC-\\d{3}"
+      - has_pattern: "TC-login-EC-\\d{3}"
+      - has_pattern: "TC-login-A11Y-\\d{3}"
+      - min_test_count: 12
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"status"'
+rubrics:
+  - format-compliance
+  - coverage-completeness
+  - template-compliance
+  - naming-conventions
+  - progress-signal-compliance
+  - handoff-compliance
+  - requirement-coverage

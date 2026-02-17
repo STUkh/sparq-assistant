@@ -1,0 +1,46 @@
+name: "S3: Air-gapped E2E generation (all MCP disabled)"
+scenario: S3
+input:
+  type: file_path
+  identifier: "docs/requirements/login-feature.md"
+  fixtures:
+    local: fixtures/local-requirements-login.md
+    conventions: fixtures/project-conventions.md
+  mcp_errors:
+    - source: jira
+      error: "MCP server disabled"
+      code: 503
+    - source: confluence
+      error: "MCP server disabled"
+      code: 503
+    - source: figma
+      error: "MCP server disabled"
+      code: 503
+expected_outputs:
+  - path: ".sparq/requirements/REQ-login.md"
+    checks:
+      - has_pattern: "REQ-login-\\d{3}"
+      - has_pattern: "SRC-L"
+      - no_pattern: "SRC-J"
+      - no_pattern: "SRC-C"
+      - no_pattern: "SRC-F"
+  - path: "e2e/pages/LoginPage.ts"
+    checks:
+      - has_pattern: "class LoginPage"
+      - has_pattern: "get .+\\(\\)"
+  - path: "e2e/specs/login/login.spec.ts"
+    checks:
+      - has_pattern: "import .+ from"
+      - no_pattern: "from '@playwright/test'"
+      - min_test_count: 3
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"status"'
+rubrics:
+  - playwright-syntax
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance
+  - assertion-detection
+  - executability-check
+  - requirement-coverage

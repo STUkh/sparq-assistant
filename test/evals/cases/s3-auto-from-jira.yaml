@@ -1,0 +1,31 @@
+name: "S3: Automated test generation from Jira ticket"
+scenario: S3
+input:
+  type: jira
+  identifier: "EP-14"
+  fixtures:
+    jira: fixtures/jira-ticket-login.json
+    conventions: fixtures/project-conventions.md
+expected_outputs:
+  - path: "e2e/pages/login.page.ts"
+    checks:
+      - has_pattern: "class LoginPage extends"
+      - has_pattern: "get .+\\(\\): Locator"
+      - no_pattern: "readonly .+ = this\\.page"
+  - path: "e2e/specs/login/login.spec.ts"
+    checks:
+      - has_pattern: "import .+ from '../../fixtures'"
+      - no_pattern: "from '@playwright/test'"
+      - min_test_count: 5
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S3"'
+      - has_pattern: '"status"\s*:\s*"success"'
+rubrics:
+  - playwright-syntax
+  - code-quality-grader
+  - naming-conventions
+  - handoff-compliance
+  - assertion-detection
+  - executability-check
+  - requirement-coverage

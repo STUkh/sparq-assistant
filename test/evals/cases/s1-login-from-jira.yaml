@@ -1,0 +1,28 @@
+name: "S1: Manual test generation from Jira ticket"
+scenario: S1
+input:
+  type: jira
+  identifier: "EP-14"
+  fixtures:
+    jira: fixtures/jira-ticket-login.json
+    figma: fixtures/figma-design-login.json
+expected_outputs:
+  - path: ".sparq/requirements/REQ-login.md"
+    checks:
+      - has_section: "Requirements"
+      - has_pattern: "REQ-login-\\d{3}"
+      - min_count: 3
+  - path: ".sparq/test-cases/TC-login-manual.md"
+    checks:
+      - has_pattern: "TC-login-HP-\\d{3}"
+      - has_pattern: "TC-login-VE-\\d{3}"
+      - has_pattern: "TC-login-SEC-\\d{3}"
+      - has_section: "Happy Path"
+      - has_section: "Validation Errors"
+      - min_test_count: 10
+rubrics:
+  - format-compliance
+  - coverage-completeness
+  - naming-conventions
+  - template-compliance
+  - requirement-coverage

@@ -1,0 +1,41 @@
+[
+  {
+    "key": "EP-30",
+    "fields": {
+      "summary": "Profile Settings — Name, Avatar, and Email Change",
+      "description": "As a user, I want to update my profile information (display name, avatar, and email address) so that my account reflects my current identity.\n\n## Details\n- Display name: 2-50 characters, alphanumeric and spaces only\n- Avatar: upload JPG/PNG up to 2MB, cropped to 200x200\n- Email change: requires current password confirmation and sends verification email to new address\n- Changes are saved individually (partial save supported)",
+      "issuetype": { "name": "Story" },
+      "priority": { "name": "High" },
+      "status": { "name": "In Progress" },
+      "labels": ["user-settings", "profile"],
+      "components": [{ "name": "Settings" }, { "name": "Profile" }],
+      "acceptance_criteria": "Given a logged-in user on the profile settings page\nWhen they update their display name to a valid value\nThen the name is saved and reflected across the app\n\nGiven a logged-in user\nWhen they upload a valid avatar image\nThen the image is cropped and displayed as their profile picture\n\nGiven a logged-in user\nWhen they change their email and confirm with their password\nThen a verification email is sent to the new address\n\nGiven a logged-in user\nWhen they enter an invalid display name (empty or >50 chars)\nThen an inline validation error is shown"
+    }
+  },
+  {
+    "key": "EP-31",
+    "fields": {
+      "summary": "Notification Preferences — Email, Push, and SMS Toggles",
+      "description": "As a user, I want to manage my notification preferences so that I only receive alerts through my preferred channels.\n\n## Details\n- Three channels: email, push notifications, SMS\n- Each channel has category-level toggles: marketing, product updates, security alerts, activity\n- Security alerts cannot be fully disabled (always sent via at least one channel)\n- Changes take effect immediately without page reload",
+      "issuetype": { "name": "Story" },
+      "priority": { "name": "Medium" },
+      "status": { "name": "To Do" },
+      "labels": ["user-settings", "notifications"],
+      "components": [{ "name": "Settings" }, { "name": "Notifications" }],
+      "acceptance_criteria": "Given a logged-in user on the notification settings page\nWhen they toggle off email notifications for marketing\nThen marketing emails stop and the toggle reflects the new state\n\nGiven a logged-in user\nWhen they attempt to disable all channels for security alerts\nThen they see a warning that at least one channel must remain active\n\nGiven a logged-in user\nWhen they enable push notifications\nThen the browser requests push notification permission\n\nGiven a logged-in user\nWhen they toggle SMS notifications on\nThen they are prompted to verify their phone number if not already verified"
+    }
+  },
+  {
+    "key": "EP-32",
+    "fields": {
+      "summary": "Privacy Settings — Visibility, Data Export, and Account Deletion",
+      "description": "As a user, I want to control my privacy settings so that I can manage who sees my profile and handle my personal data.\n\n## Details\n- Profile visibility: public, contacts only, private\n- Data export: GDPR-compliant full data export in JSON format, generated async with email notification\n- Account deletion: soft delete with 30-day recovery window, requires password confirmation\n- Activity visibility: toggle for showing online status and last active timestamp",
+      "issuetype": { "name": "Story" },
+      "priority": { "name": "High" },
+      "status": { "name": "To Do" },
+      "labels": ["user-settings", "privacy", "gdpr"],
+      "components": [{ "name": "Settings" }, { "name": "Privacy" }],
+      "acceptance_criteria": "Given a logged-in user on the privacy settings page\nWhen they set profile visibility to \"contacts only\"\nThen only approved contacts can view their profile\n\nGiven a logged-in user\nWhen they request a data export\nThen a background job generates the export and emails a download link within 24 hours\n\nGiven a logged-in user\nWhen they initiate account deletion and confirm with their password\nThen the account enters a 30-day soft-delete state with a recovery option\n\nGiven a user who deleted their account\nWhen they log in within the 30-day recovery window\nThen the account is restored with all data intact"
+    }
+  }
+]

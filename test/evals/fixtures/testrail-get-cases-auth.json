@@ -1,0 +1,172 @@
+{
+  "cases": [
+    {
+      "id": 5001,
+      "title": "Verify successful login with valid credentials",
+      "section_id": 101,
+      "type_id": 6,
+      "priority_id": 3,
+      "estimate": "5m",
+      "refs": "EP-14",
+      "custom_preconds": "1. User has valid credentials\n2. User is not logged in",
+      "custom_steps_separated": [
+        {
+          "content": "Navigate to /login",
+          "expected": "Login form displayed",
+          "additional_info": ""
+        },
+        {
+          "content": "Enter test.user@example.com",
+          "expected": "Email field accepts input",
+          "additional_info": ""
+        },
+        { "content": "Enter P@ssw0rd123!", "expected": "Password masked", "additional_info": "" },
+        { "content": "Click Sign In", "expected": "Redirect to /dashboard", "additional_info": "" }
+      ]
+    },
+    {
+      "id": 5002,
+      "title": "Verify Remember Me persists session",
+      "section_id": 101,
+      "type_id": 6,
+      "priority_id": 2,
+      "estimate": "5m",
+      "refs": "EP-14",
+      "custom_preconds": "1. User has valid credentials",
+      "custom_steps_separated": [
+        {
+          "content": "Navigate to /login",
+          "expected": "Login form displayed",
+          "additional_info": ""
+        },
+        {
+          "content": "Check Remember Me checkbox",
+          "expected": "Checkbox selected",
+          "additional_info": ""
+        },
+        {
+          "content": "Login with valid credentials",
+          "expected": "Session persists after browser restart",
+          "additional_info": ""
+        }
+      ]
+    },
+    {
+      "id": 5003,
+      "title": "Verify error on invalid email format",
+      "section_id": 102,
+      "type_id": 5,
+      "priority_id": 3,
+      "estimate": "3m",
+      "refs": "EP-14",
+      "custom_preconds": "1. User is on login page",
+      "custom_steps_separated": [
+        {
+          "content": "Enter 'notanemail' in email field",
+          "expected": "Validation error shown",
+          "additional_info": ""
+        },
+        { "content": "Click Sign In", "expected": "Form does not submit", "additional_info": "" }
+      ]
+    },
+    {
+      "id": 5004,
+      "title": "Verify account lockout after 5 failed attempts",
+      "section_id": 103,
+      "type_id": 9,
+      "priority_id": 4,
+      "estimate": "10m",
+      "refs": "EP-14",
+      "custom_preconds": "1. User account exists\n2. No prior failed attempts",
+      "custom_steps_separated": [
+        {
+          "content": "Attempt login with wrong password 5 times",
+          "expected": "Account locked message after 5th attempt",
+          "additional_info": ""
+        },
+        {
+          "content": "Attempt login with correct password",
+          "expected": "Account remains locked",
+          "additional_info": ""
+        }
+      ]
+    },
+    {
+      "id": 5005,
+      "title": "Verify login with maximum length email (254 chars)",
+      "section_id": 104,
+      "type_id": 4,
+      "priority_id": 2,
+      "estimate": "3m",
+      "refs": "EP-14",
+      "custom_preconds": "1. Account with 254-char email exists",
+      "custom_steps_separated": [
+        {
+          "content": "Enter 254-character email",
+          "expected": "Email accepted",
+          "additional_info": ""
+        },
+        {
+          "content": "Login with valid password",
+          "expected": "Login succeeds",
+          "additional_info": ""
+        }
+      ]
+    },
+    {
+      "id": 5006,
+      "title": "Verify screen reader announces login form",
+      "section_id": 105,
+      "type_id": 2,
+      "priority_id": 2,
+      "estimate": "5m",
+      "refs": "EP-14",
+      "custom_preconds": "1. Screen reader is active",
+      "custom_steps_separated": [
+        {
+          "content": "Navigate to /login",
+          "expected": "Form role announced",
+          "additional_info": ""
+        },
+        {
+          "content": "Tab to each field",
+          "expected": "Labels read correctly",
+          "additional_info": ""
+        }
+      ]
+    },
+    {
+      "id": 5007,
+      "title": "Verify CSRF token in login form",
+      "section_id": 103,
+      "type_id": 9,
+      "priority_id": 3,
+      "estimate": "5m",
+      "refs": "EP-14",
+      "custom_preconds": "1. Login page loaded",
+      "custom_steps_separated": [
+        {
+          "content": "Inspect form source",
+          "expected": "Hidden CSRF field present",
+          "additional_info": ""
+        },
+        {
+          "content": "Submit without CSRF token",
+          "expected": "403 response",
+          "additional_info": ""
+        }
+      ]
+    },
+    {
+      "id": 5008,
+      "title": "Incomplete case with no steps",
+      "section_id": 101,
+      "type_id": 6,
+      "priority_id": 1,
+      "estimate": null,
+      "refs": "",
+      "custom_preconds": "",
+      "custom_steps_separated": null
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+name: "S2: Manual to E2E via Qase MCP read"
+scenario: S2
+input:
+  type: tms_read
+  provider: qase
+  identifier: "project_code: PROJ"
+  fixtures:
+    qase_suites: fixtures/qase-list-suites-auth.json
+    qase_cases: fixtures/qase-list-cases-auth.json
+    conventions: fixtures/project-conventions.md
+expected_outputs:
+  - path: ".sparq/test-cases/TC-auth-tms-import.md"
+    checks:
+      - has_pattern: "TC-auth-\\w+-\\d{3}"
+      - min_test_count: 4
+      - has_tms_id: "qase"
+  - path: "e2e/specs/auth/auth.spec.ts"
+    checks:
+      - has_pattern: "import .+ from"
+      - no_pattern: "from '@playwright/test'"
+      - min_test_count: 4
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S2"'
+      - has_pattern: '"status"\s*:\s*"success"'
+rubrics:
+  - playwright-syntax
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance
+  - assertion-detection
+  - requirement-coverage

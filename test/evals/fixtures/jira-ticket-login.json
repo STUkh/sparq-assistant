@@ -1,0 +1,13 @@
+{
+  "key": "EP-14",
+  "fields": {
+    "summary": "User Login with Email and Password",
+    "description": "As a user, I want to log in with my email and password so that I can access my dashboard.",
+    "issuetype": { "name": "Story" },
+    "priority": { "name": "High" },
+    "status": { "name": "In Progress" },
+    "labels": ["authentication", "login"],
+    "components": [{ "name": "Auth Module" }],
+    "customfield_10014": "Given a registered user\nWhen they enter valid credentials\nThen they should be redirected to dashboard\n\nGiven an unregistered email\nWhen they attempt login\nThen they should see an error message\n\nGiven a registered user with wrong password\nWhen they attempt login\nThen they should see invalid credentials error"
+  }
+}

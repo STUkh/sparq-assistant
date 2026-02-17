@@ -1,0 +1,13 @@
+name: "Orchestrator classification: S1 manual test generation"
+scenario: classification
+input:
+  type: text
+  identifier: "Generate manual test cases for EP-14 login feature"
+expected_outputs:
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S1"'
+rubrics:
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance

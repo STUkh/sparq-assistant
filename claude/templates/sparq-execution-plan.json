@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_seeAlso": "claude/templates/sparq-execution-plan.md for the markdown template",
+  "title": "SparQ Execution Plan",
+  "description": "Machine-readable execution plan for SparQ QA pipeline tracking",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "scenario": {
+          "type": "string",
+          "enum": ["S1", "S2", "S3", "S4", "S5"]
+        },
+        "feature": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "requestedBy": {
+          "type": "string"
+        }
+      },
+      "required": ["scenario", "feature", "timestamp"]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["jira", "confluence", "figma", "local"]
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "fetched", "failed", "skipped"]
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": ["type", "identifier", "status"]
+      }
+    },
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": ["P0.5", "P1", "P2", "P3"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "agent": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "checkpoint", "completed", "failed", "skipped"]
+          },
+          "startedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parallel": {
+            "type": ["object", "null"],
+            "properties": {
+              "totalTasks": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "completedTasks": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "failedTasks": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "required": ["id", "name", "status"]
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^REQ-"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": ["SRC-J", "SRC-C", "SRC-F", "SRC-L"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"]
+          },
+          "testCases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^TC-"
+            }
+          }
+        },
+        "required": ["id", "title"]
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "totalRequirements": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coveredRequirements": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalTestCases": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coveragePercentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "phase": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "approved", "rejected", "modified", "auto-approved"]
+          },
+          "approvedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "phase", "status"]
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["planning", "in_progress", "checkpoint", "completed", "failed", "aborted"]
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["recoverable", "blocking", "critical", "ambiguous"]
+          },
+          "message": { "type": "string" },
+          "resolution": { "type": ["string", "null"] }
+        },
+        "required": ["phase", "category", "message"]
+      }
+    },
+    "checkpointLevel": {
+      "type": "string",
+      "enum": ["full", "standard", "minimal"],
+      "description": "Active checkpoint level when plan was created"
+    },
+    "resumeState": {
+      "type": ["object", "null"],
+      "description": "Present when workflow was interrupted and can be resumed",
+      "properties": {
+        "lastCompletedPhase": {
+          "type": "string",
+          "enum": ["P0", "P0.5", "P1", "P1.5", "P2", "P3"]
+        },
+        "nextPhase": {
+          "type": "string",
+          "enum": ["P0.5", "P1", "P1.5", "P2", "P3"]
+        },
+        "lastHandoffPath": {
+          "type": "string"
+        },
+        "configHash": {
+          "type": "string",
+          "description": "SHA-256 of sparq.config.json at interruption time"
+        },
+        "interruptedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["user_abort", "error", "timeout", "session_end"]
+        }
+      },
+      "required": ["lastCompletedPhase", "nextPhase", "configHash", "interruptedAt", "reason"]
+    },
+    "stateDir": {
+      "type": "string",
+      "const": ".sparq/state/",
+      "description": "Directory containing machine-readable state files (current-task.json, config-snapshot.json, parallel.json, journal.jsonl). See resume-protocol.md for schemas and write protocol."
+    }
+  },
+  "required": ["version", "request", "phases", "status"]
+}

@@ -1,0 +1,27 @@
+name: "S6: Bug regression from Jira ticket"
+scenario: S6
+input:
+  type: jira
+  identifier: "BUG-42"
+  fixtures:
+    jira: fixtures/jira-bug-form-crash.json
+    conventions: fixtures/project-conventions.md
+expected_outputs:
+  - path: "e2e/specs/regression/BUG-42.spec.ts"
+    checks:
+      - has_pattern: REG-BUG-42-\d{3}
+      - has_pattern: "@regression"
+      - has_pattern: "test[(]"
+      - has_pattern: "expect[(]"
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: "scenario.*S6"
+      - has_pattern: "status.*success"
+rubrics:
+  - regression-compliance
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance
+  - assertion-detection
+  - executability-check
+  - requirement-coverage

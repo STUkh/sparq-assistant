@@ -1,0 +1,22 @@
+name: "S2: TestRail MCP unavailable during TMS read"
+scenario: S2
+input:
+  type: tms_read
+  provider: testrail
+  identifier: "project_id: 1, suite_id: 42"
+  mcp_errors:
+    - source: testrail
+      error: "Connection refused"
+      code: 503
+expected_outputs:
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"status"\s*:\s*"partial"'
+      - has_pattern: '"gaps"\s*:\s*\[(?!\s*\])'
+      - has_pattern: "[Tt]est[Rr]ail.*(?:unavailable|failed|[Cc]onnection [Rr]efused)"
+rubrics:
+  - error-handling-compliance
+  - format-compliance
+  - naming-conventions
+  - progress-signal-compliance
+  - handoff-compliance

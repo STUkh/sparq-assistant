@@ -1,0 +1,26 @@
+{
+  "id": "98304",
+  "title": "Login Feature Requirements",
+  "type": "page",
+  "status": "current",
+  "space": {
+    "key": "PROJ",
+    "name": "Project Documentation"
+  },
+  "version": {
+    "number": 3,
+    "when": "2025-01-10T14:30:00.000Z",
+    "by": {
+      "displayName": "Product Owner"
+    }
+  },
+  "body": {
+    "storage": {
+      "value": "<h1>Login Feature Requirements</h1><p>This page defines the acceptance criteria and user journey for the Login feature of the ExampleApp platform.</p><h2>Overview</h2><p>Users must be able to authenticate using email/password credentials, social login providers (Google, GitHub), or SSO. The login page must be accessible, performant, and secure against common attack vectors.</p><h2>Acceptance Criteria</h2><ul><li>AC-1: User can log in with a valid email and password and is redirected to the dashboard</li><li>AC-2: User sees an inline error message when entering an invalid email format</li><li>AC-3: User sees an error message after entering incorrect credentials</li><li>AC-4: User account is locked after 5 consecutive failed login attempts</li><li>AC-5: \"Remember Me\" checkbox persists the session for 30 days</li><li>AC-6: User can log in via Google OAuth 2.0</li><li>AC-7: User can log in via GitHub OAuth</li><li>AC-8: Session expires after 30 minutes of inactivity</li><li>AC-9: Login form is fully navigable via keyboard (Tab, Enter, Escape)</li><li>AC-10: Screen readers can identify all form fields and error messages via ARIA labels</li><li>AC-11: Concurrent sessions from different devices are allowed up to a maximum of 3</li><li>AC-12: Passwords with special characters (e.g., <, >, &, \") are handled correctly</li></ul><h2>User Journey</h2><ol><li>User navigates to /login</li><li>User enters email in the email input field</li><li>User enters password in the password input field</li><li>User optionally checks \"Remember Me\"</li><li>User clicks the \"Sign In\" button</li><li>System validates credentials against the authentication service</li><li>On success: user is redirected to /dashboard with a welcome toast</li><li>On failure: inline error is displayed below the form, input fields retain values</li></ol><h2>Edge Cases</h2><ul><li>User submits the form with both fields empty</li><li>User pastes a very long string (>256 chars) into the password field</li><li>User navigates away mid-login and returns</li><li>User opens login in multiple tabs simultaneously</li><li>Network timeout during credential validation</li></ul><h2>Security Considerations</h2><ul><li>Rate limiting: max 10 login attempts per IP per minute</li><li>CSRF token required on form submission</li><li>Password field must mask input and disable autocomplete</li><li>All login attempts are logged for audit purposes</li></ul>"
+    }
+  },
+  "_links": {
+    "webui": "/spaces/PROJ/pages/98304/Login+Feature+Requirements",
+    "self": "https://example.atlassian.net/wiki/rest/api/content/98304"
+  }
+}

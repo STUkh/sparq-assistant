@@ -1,0 +1,13 @@
+{
+  "name": "mock-project",
+  "version": "1.0.0",
+  "dependencies": {
+    "vue": "^3.4.0",
+    "primevue": "^4.0.0",
+    "pinia": "^2.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "typescript": "^5.3.0"
+  }
+}

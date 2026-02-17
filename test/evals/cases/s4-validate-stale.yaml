@@ -1,0 +1,15 @@
+name: "S4: Validate stale tests"
+scenario: S4
+input:
+  type: file_path
+  identifier: "e2e/specs/login/login.spec.ts"
+expected_outputs:
+  - path: ".sparq/validation/validation-report.md"
+    checks:
+      - has_section: "Findings"
+      - has_pattern: VF-\d+
+      - has_severity_counts: true
+rubrics:
+  - format-compliance
+  - naming-conventions
+  - template-compliance

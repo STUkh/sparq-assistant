@@ -1,0 +1,37 @@
+{
+  "name": "Login Page",
+  "type": "FRAME",
+  "children": [
+    { "name": "Logo", "type": "INSTANCE" },
+    {
+      "name": "Login Form",
+      "type": "FRAME",
+      "children": [
+        {
+          "name": "Email Input",
+          "type": "INSTANCE",
+          "componentProperties": { "placeholder": "Enter your email" }
+        },
+        {
+          "name": "Password Input",
+          "type": "INSTANCE",
+          "componentProperties": { "placeholder": "Enter your password" }
+        },
+        { "name": "Remember Me Checkbox", "type": "INSTANCE" },
+        {
+          "name": "Sign In Button",
+          "type": "INSTANCE",
+          "componentProperties": { "label": "Sign In" }
+        },
+        { "name": "Forgot Password Link", "type": "TEXT", "characters": "Forgot Password?" }
+      ]
+    },
+    {
+      "name": "Error Message",
+      "type": "FRAME",
+      "children": [
+        { "name": "Error Text", "type": "TEXT", "characters": "Invalid email or password" }
+      ]
+    }
+  ]
+}

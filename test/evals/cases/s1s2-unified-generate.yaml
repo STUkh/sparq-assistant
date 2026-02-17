@@ -1,0 +1,49 @@
+name: "S1+S2 Unified Generate — Full pipeline from Jira"
+scenario: S1+S2
+input:
+  type: jira
+  identifier: "EP-14"
+  fixtures:
+    jira: fixtures/jira-ticket-login.json
+    figma: fixtures/figma-design-login.json
+    conventions: fixtures/project-conventions.md
+expected_outputs:
+  - path: ".sparq/requirements/REQ-login.md"
+    checks:
+      - has_section: "Requirements"
+      - has_pattern: REQ-login-\d{3}
+      - has_pattern: "SRC-J"
+      - min_count: 3
+  - path: ".sparq/test-cases/TC-login-manual.md"
+    checks:
+      - has_pattern: TC-login-HP-\d{3}
+      - has_pattern: TC-login-VE-\d{3}
+      - has_pattern: TC-login-SEC-\d{3}
+      - min_test_count: 10
+  - path: "e2e/pages/LoginPage.ts"
+    checks:
+      - has_pattern: "class LoginPage"
+      - has_pattern: get .+[(][)]
+  - path: "e2e/specs/login/login.spec.ts"
+    checks:
+      - has_pattern: "import .+ from"
+      - no_pattern: "from '@playwright/test'"
+      - min_test_count: 5
+  - path: ".sparq/coverage/coverage-matrix.md"
+    checks:
+      - has_section: "Traceability Matrix"
+      - has_pattern: REQ-login-\d{3}
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: "scenario"
+      - has_pattern: "status"
+rubrics:
+  - format-compliance
+  - coverage-completeness
+  - playwright-syntax
+  - template-compliance
+  - handoff-compliance
+  - naming-conventions
+  - assertion-detection
+  - executability-check
+  - requirement-coverage

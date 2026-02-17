@@ -1,0 +1,58 @@
+{
+  "name": "sparq-assistant",
+  "version": "1.0.0",
+  "description": "QA Assistant Framework for Claude Code — interactive testing toolkit with Figma, Jira, Confluence, TestRail, Qase, and Playwright integration",
+  "type": "module",
+  "bin": {
+    "sparq-assistant": "./bin/sparq.mjs"
+  },
+  "exports": {
+    ".": "./bin/sparq.mjs"
+  },
+  "scripts": {
+    "test": "node --test 'test/**/*.test.mjs'",
+    "test:unit": "node --test test/unit/*.test.mjs",
+    "test:integration": "node --test test/integration/*.test.mjs",
+    "test:coverage": "node --test --experimental-test-coverage 'test/**/*.test.mjs'",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "check": "npm run lint && npm test",
+    "prepublishOnly": "npm run check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.14"
+  },
+  "files": [
+    "bin/",
+    "claude/",
+    "docs/",
+    "examples/",
+    "mcp/",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "claude-code",
+    "qa",
+    "testing",
+    "playwright",
+    "test-automation",
+    "manual-testing",
+    "testrail",
+    "figma",
+    "jira",
+    "mcp"
+  ],
+  "author": "SparQ",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sparq-assistant/sparq-assistant"
+  },
+  "bugs": {
+    "url": "https://github.com/sparq-assistant/sparq-assistant/issues"
+  },
+  "homepage": "https://github.com/sparq-assistant/sparq-assistant#readme"
+}

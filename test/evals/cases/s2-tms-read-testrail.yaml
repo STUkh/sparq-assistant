@@ -1,0 +1,36 @@
+name: "S2: Manual to E2E via TestRail MCP read"
+scenario: S2
+input:
+  type: tms_read
+  provider: testrail
+  identifier: "project_id: 1, suite_id: 42"
+  fixtures:
+    testrail_sections: fixtures/testrail-get-sections-auth.json
+    testrail_cases: fixtures/testrail-get-cases-auth.json
+    conventions: fixtures/project-conventions.md
+expected_outputs:
+  - path: ".sparq/test-cases/TC-auth-tms-import.md"
+    checks:
+      - has_pattern: "TC-auth-\\w+-\\d{3}"
+      - min_test_count: 5
+      - has_tms_id: "testrail"
+  - path: "e2e/pages/AuthPage.ts"
+    checks:
+      - has_pattern: "class AuthPage"
+      - has_pattern: "get .+\\(\\)"
+  - path: "e2e/specs/auth/auth.spec.ts"
+    checks:
+      - has_pattern: "import .+ from"
+      - no_pattern: "from '@playwright/test'"
+      - min_test_count: 5
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S2"'
+      - has_pattern: '"status"\s*:\s*"success"'
+rubrics:
+  - playwright-syntax
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance
+  - assertion-detection
+  - requirement-coverage

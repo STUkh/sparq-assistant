@@ -1,0 +1,13 @@
+name: "Orchestrator classification: S4 test validation"
+scenario: classification
+input:
+  type: text
+  identifier: "Validate existing test suite for UI drift and staleness"
+expected_outputs:
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S4"'
+rubrics:
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance

@@ -1,0 +1,23 @@
+name: "S3: Resume from interrupted checkpoint"
+scenario: S3
+input:
+  type: resume
+  identifier: ".sparq/state/current-task.json"
+  fixtures:
+    state: fixtures/resume-state-interrupted.json
+expected_outputs:
+  - path: ".sparq/state/current-task.json"
+    checks:
+      - has_pattern: '"status"\s*:\s*"completed"'
+      - has_pattern: '"resumedAt"'
+  - path: ".sparq/state/journal.jsonl"
+    checks:
+      - has_pattern: '"event"\s*:\s*"resume"'
+      - has_pattern: '"recoveryPoint"'
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S3"'
+      - has_pattern: '"status"'
+rubrics:
+  - resume-state-compliance
+  - handoff-compliance

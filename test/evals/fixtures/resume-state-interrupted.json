@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "workflowId": "wf-abc-123",
+  "scenario": "S3",
+  "feature": "user-settings",
+  "autoChain": false,
+  "phase": "P2",
+  "phaseStatus": "parallel_collecting",
+  "activeAgent": "sparq-automation-engineer",
+  "executionMode": "task_parallel",
+  "lastApprovedCheckpoint": {
+    "phase": "P1",
+    "checkpointId": 1,
+    "approvedAt": "2025-01-15T10:08:00Z"
+  },
+  "completedPhases": [
+    {
+      "phase": "P0",
+      "completedAt": "2025-01-15T10:02:00Z",
+      "handoffPath": ".sparq/state/handoffs/P0-handoff.json",
+      "status": "success"
+    },
+    {
+      "phase": "P1",
+      "completedAt": "2025-01-15T10:08:00Z",
+      "handoffPath": ".sparq/state/handoffs/P1-handoff.json",
+      "status": "success"
+    }
+  ],
+  "lastError": {
+    "phase": "P2",
+    "category": "recoverable",
+    "message": "Process interrupted by user",
+    "timestamp": "2025-01-15T10:15:00Z",
+    "retryCount": 0
+  },
+  "startedAt": "2025-01-15T10:00:00Z",
+  "updatedAt": "2025-01-15T10:15:00Z",
+  "interruptedAt": "2025-01-15T10:15:00Z",
+  "reason": "user_abort"
+}

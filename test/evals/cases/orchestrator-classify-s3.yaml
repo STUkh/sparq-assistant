@@ -1,0 +1,13 @@
+name: "Orchestrator classification: S3 direct E2E generation"
+scenario: classification
+input:
+  type: text
+  identifier: "Create E2E tests directly for the login feature"
+expected_outputs:
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S3"'
+rubrics:
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance

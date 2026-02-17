@@ -1,0 +1,25 @@
+name: "S4 Refactor: LoginPage to SignInPage rename"
+scenario: S4
+input:
+  type: file_path
+  identifier: "e2e/specs/login/login.spec.ts"
+  mode: refactor
+  refactor_args:
+    rename_from: "LoginPage"
+    rename_to: "SignInPage"
+expected_outputs:
+  - path: ".sparq/validation/validation-report.md"
+    checks:
+      - has_section: "Findings"
+      - has_pattern: VF-\d+
+      - has_severity_counts: true
+      - has_pattern: "[Rr]efactor"
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: "scenario.*S4"
+      - has_pattern: "mode.*refactor"
+      - has_pattern: "status"
+rubrics:
+  - format-compliance
+  - template-compliance
+  - naming-conventions

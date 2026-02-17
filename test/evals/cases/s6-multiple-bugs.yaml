@@ -1,0 +1,27 @@
+name: "S6: Regression for bug with related issues"
+scenario: S6
+input:
+  type: jira
+  identifier: "BUG-55"
+  fixtures:
+    jira: fixtures/jira-bugs-related.json
+    conventions: fixtures/project-conventions.md
+expected_outputs:
+  - path: "e2e/specs/regression/BUG-55.spec.ts"
+    checks:
+      - has_pattern: REG-BUG-55-\d{3}
+      - has_pattern: "@regression"
+      - has_pattern: "test[(]"
+      - has_pattern: "expect[(]"
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: "scenario.*S6"
+      - has_pattern: "status.*success"
+rubrics:
+  - regression-compliance
+  - format-compliance
+  - playwright-syntax
+  - naming-conventions
+  - assertion-detection
+  - executability-check
+  - requirement-coverage

@@ -1,0 +1,13 @@
+name: "Orchestrator classification: S5 requirement sync"
+scenario: classification
+input:
+  type: text
+  identifier: "Sync tests with updated requirements from EP-14"
+expected_outputs:
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S5"'
+rubrics:
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance
