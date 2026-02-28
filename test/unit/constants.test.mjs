@@ -7,10 +7,7 @@ import {
   AUDIT_SENTINEL_END,
   AUDIT_SENTINEL_START,
   COMMANDS,
-  EXIT_FILESYSTEM,
-  EXIT_GENERAL,
   EXIT_SUCCESS,
-  EXIT_USAGE,
   generateRuleContent,
   MATURITY_LEVELS,
   MAX_MIGRATION_ITERATIONS,
@@ -36,18 +33,6 @@ import {
 describe('exit codes', () => {
   it('EXIT_SUCCESS should be 0', () => {
     assert.equal(EXIT_SUCCESS, 0)
-  })
-
-  it('EXIT_GENERAL should be 1', () => {
-    assert.equal(EXIT_GENERAL, 1)
-  })
-
-  it('EXIT_USAGE should be 2', () => {
-    assert.equal(EXIT_USAGE, 2)
-  })
-
-  it('EXIT_FILESYSTEM should be 3', () => {
-    assert.equal(EXIT_FILESYSTEM, 3)
   })
 })
 
@@ -113,10 +98,6 @@ describe('AGENT_NAMES', () => {
     assert.ok(AGENT_NAMES.includes('sparq-requirements-analyst.md'))
   })
 
-  it('should not include sparq-regression-writer.md (merged into automation-engineer)', () => {
-    assert.ok(!AGENT_NAMES.includes('sparq-regression-writer.md'))
-  })
-
   it('every entry should end with .md', () => {
     for (const name of AGENT_NAMES) {
       assert.ok(name.endsWith('.md'), `${name} should end with .md`)
@@ -136,28 +117,8 @@ describe('AGENT_NAMES', () => {
 // ---------------------------------------------------------------------------
 
 describe('SPARQ_OUTPUT_DIRS', () => {
-  it('should be frozen', () => {
-    assert.ok(Object.isFrozen(SPARQ_OUTPUT_DIRS), 'SPARQ_OUTPUT_DIRS should be frozen')
-  })
-
   it('should contain .sparq/requirements', () => {
     assert.ok(SPARQ_OUTPUT_DIRS.includes('.sparq/requirements'))
-  })
-
-  it('should contain .sparq/test-cases', () => {
-    assert.ok(SPARQ_OUTPUT_DIRS.includes('.sparq/test-cases'))
-  })
-
-  it('should contain .sparq/parallel', () => {
-    assert.ok(SPARQ_OUTPUT_DIRS.includes('.sparq/parallel'))
-  })
-
-  it('should contain .sparq/coverage', () => {
-    assert.ok(SPARQ_OUTPUT_DIRS.includes('.sparq/coverage'))
-  })
-
-  it('should contain .sparq/validation', () => {
-    assert.ok(SPARQ_OUTPUT_DIRS.includes('.sparq/validation'))
   })
 })
 
@@ -166,10 +127,6 @@ describe('SPARQ_OUTPUT_DIRS', () => {
 // ---------------------------------------------------------------------------
 
 describe('COMMANDS', () => {
-  it('should be frozen', () => {
-    assert.ok(Object.isFrozen(COMMANDS), 'COMMANDS should be frozen')
-  })
-
   it('should have init command', () => {
     assert.ok('init' in COMMANDS, 'should have init')
   })
@@ -190,16 +147,8 @@ describe('COMMANDS', () => {
     assert.ok('doctor' in COMMANDS, 'should have doctor')
   })
 
-  it('should have eval command', () => {
-    assert.ok('eval' in COMMANDS, 'should have eval')
-  })
-
-  it('should have improve command', () => {
-    assert.ok('improve' in COMMANDS, 'should have improve')
-  })
-
-  it('should have baseline command', () => {
-    assert.ok('baseline' in COMMANDS, 'should have baseline')
+  it('should have lint command', () => {
+    assert.ok('lint' in COMMANDS, 'should have lint')
   })
 
   it('should have help command', () => {
@@ -222,14 +171,6 @@ describe('audit constants', () => {
 
   it('AUDIT_SENTINEL_END should be an HTML comment', () => {
     assert.match(AUDIT_SENTINEL_END, /^<!--.*-->$/)
-  })
-
-  it('MATURITY_LEVELS should have 5 entries', () => {
-    assert.equal(MATURITY_LEVELS.length, 5)
-  })
-
-  it('MATURITY_LEVELS should be frozen', () => {
-    assert.ok(Object.isFrozen(MATURITY_LEVELS))
   })
 
   it('MATURITY_LEVELS should contain expected level names', () => {

@@ -29,7 +29,9 @@ Config, version check, pattern rules, and E2E code generation preamble per `clau
 3. If Figma MCP available and enabled: match UI elements to Figma components, extract `data-testid` values, map layers to DOM structure. If Figma MCP is unavailable, selectors are derived from codebase grep for `data-testid` attributes per `degradation-strategy.md`.
 4. **CHECKPOINT** -- Clarify ambiguities: test data requirements, auth needs, unresolved UI elements, API mocking vs real backend. **Wait for answers.**
 5. **CHECKPOINT** -- Delegate to `sparq-automation-engineer` agent with tech context: `project.componentFileExtensions`, `e2e`, `project.sourceRoot`, `project.routeDiscoveryPattern`, `preferences.locatorPriority`. Present generated code. **Wait for approval.**
+5b. **Source preservation**: The manual-to-e2e conversion does NOT delete or modify source manual test files. If the user requests cleanup of source files after conversion, present a removal checkpoint per `tms-abstraction.md` `<removal_policy>` before any deletion.
 6. Optionally verify with Playwright MCP browser (see "Verification via Playwright MCP" below)
+7. **Optional lint check**: After files are written and smoke verify passes, offer `sparq lint {e2e-directory}/` to validate converted tests against 8 deterministic code-quality rubrics (locator quality, flaky patterns, assertion coverage, naming conventions). Instant, CI-compatible, zero model inference.
 
 **Delegation**: sparq-automation-engineer agent (with full tech context from config)
 
@@ -72,6 +74,8 @@ Generated specs follow project conventions from step 2. If no existing patterns,
 - `.claude/skills/sparq-shared/references/tms-abstraction.md`
 - `.claude/skills/sparq-shared/references/config-schema.md`
 - `.claude/skills/sparq-shared/references/error-handling.md`
+- `claude/skills/sparq-qase-api/SKILL.md`
+- `claude/skills/sparq-testrail-api/SKILL.md`
 
 ## Usage
 

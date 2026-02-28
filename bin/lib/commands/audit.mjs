@@ -21,26 +21,30 @@ function loadConfig(targetDir) {
   }
 }
 
-export async function cmdAudit(targetDir, { fix = false, json = false } = {}) {
+function passesGate(level, strict) {
+  return strict ? level >= 3 : true
+}
+
+export async function cmdAudit(targetDir, { fix = false, json = false, strict = false } = {}) {
   const result = auditPromptMaturity(targetDir)
 
   if (result.targetDirMissing) {
     fail(`Target directory does not exist: ${targetDir}`)
-    return
+    return false
   }
 
   if (json) {
     console.log(JSON.stringify(result, null, 2))
-    return
+    return passesGate(result.level, strict)
   }
 
   formatAuditReport(result)
 
-  if (!fix) return
+  if (!fix) return passesGate(result.level, strict)
 
   if (result.level >= 4) {
     ok('Prompt architecture is production-ready — no supplementary prompts needed.')
-    return
+    return true
   }
 
   heading(`${emoji.audit}Generating supplementary prompts`)
@@ -54,7 +58,7 @@ export async function cmdAudit(targetDir, { fix = false, json = false } = {}) {
 
   if (generated.length === 0) {
     info('No additional prompts needed for current gaps.')
-    return
+    return passesGate(result.level, strict)
   }
 
   updateRuleFileReferences(targetDir, generated)
@@ -74,4 +78,5 @@ export async function cmdAudit(targetDir, { fix = false, json = false } = {}) {
       `Maturity improved: ${result.levelName} (${result.level}) → ${postResult.levelName} (${postResult.level})`,
     )
   }
+  return passesGate(postResult.level, strict)
 }

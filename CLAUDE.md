@@ -43,12 +43,13 @@ graph TD
 
 > **Note:** Browser preview and screenshot verification require Playwright MCP. Cypress projects use `npx tsc --noEmit` and `npx cypress verify` for smoke checks instead.
 
-- **CLI** (`bin/sparq.mjs` → `bin/lib/`): Pure ESM Node.js installer + eval runner — init, update, uninstall, clean, doctor, audit, help, eval, improve, baseline, tune
+- **CLI** (`bin/sparq.mjs` → `bin/lib/`): Pure ESM Node.js installer — init, update, uninstall, clean, doctor, audit, lint, coverage, help. Includes non-blocking npm update check on startup (24h cache at `~/.sparq-assistant/update-check.json`, opt-out via `--no-update-check` or `SPARQ_NO_UPDATE_CHECK=1`)
 - **Agents** (`claude/agents/`): 5 markdown agents with YAML frontmatter. Orchestrator classifies S1–S6, dispatches via structured handoffs (claude/skills/sparq-shared/references/handoff-schema.md)
-- **Skills** (`claude/skills/`): 24 skill directories — QA workflow skills (`/sparq:start`, `/sparq:generate`, `/sparq:generate-manual`, `/sparq:generate-e2e`, `/sparq:manual-to-e2e`, `/sparq:validate`, `/sparq:sync`, `/sparq:regression`, `/sparq:refactor`, `/sparq:export`), setup (`/sparq:init`, `/sparq:config`, `/sparq:tune`), framework best practices (`/sparq:playwright-best-practices`, `/sparq:cypress-best-practices`), orchestrator internals (`/sparq:analyze`, `/sparq:resume`), and framework dev tools (`/sparq:eval`, `/sparq:improve`, `/sparq:baseline-promote`, `/sparq:eval-reflect`, `/sparq:eval-tune`, `/sparq:optimize`, `/sparq:audit-prompts`)
-- **References** (`claude/skills/sparq-shared/references/`): 38 shared docs — codebase-readiness.md, config-schema.md, confluence-patterns.md, cypress-advanced.md, cypress-anti-patterns.md, cypress-architecture.md, cypress-patterns.md, cypress-testing-strategies.md, data-model.md, degradation-strategy.md, e2e-common-patterns.md, error-handling.md, eval-workflow.md, figma-patterns.md, handoff-schema.md, jira-patterns.md, local-tms-formats.md, mcp-tool-inventory.md, parallel-execution.md, pattern-adherence.md, playwright-a11y-visual.md, playwright-anti-patterns.md, playwright-assertions.md, playwright-auth-mocking.md, playwright-ci-reporting.md, playwright-mcp-tools.md, playwright-patterns.md, progress-protocol.md, qase-formats.md, refresh-patterns.md, regression-workflow.md, resume-protocol-agent.md, resume-protocol.md, test-generation-patterns.md, testrail-formats.md, tms-abstraction.md, token-budget.md, validation-checklist.md
-- **MCP** (`mcp/`): Atlassian (HTTP), Figma (HTTP), Playwright (stdio), TestRail (stdio), Qase (stdio)
+- **Skills** (`claude/skills/`): 20 skill directories — QA workflow skills (`/sparq:start`, `/sparq:generate`, `/sparq:generate-manual`, `/sparq:generate-e2e`, `/sparq:manual-to-e2e`, `/sparq:validate`, `/sparq:sync`, `/sparq:refactor`, `/sparq:export`, `/sparq:publish-results`), setup (`/sparq:init`, `/sparq:config`), framework best practices (`/sparq:playwright-best-practices`, `/sparq:cypress-best-practices`), orchestrator internals (`/sparq:analyze`, `/sparq:resume`), API fallback (`/sparq:qase-api`, `/sparq:testrail-api`), prompt guidance (`/sparq:prompt-optimizations`), performance consulting (`/sparq:performance`)
+- **References** (`claude/skills/sparq-shared/references/`): 47 shared docs — allure-patterns.md, codebase-readiness.md, completion-verification.md, config-schema.md, confluence-patterns.md, context-anchoring.md, coverage-iteration.md, cypress-advanced.md, cypress-anti-patterns.md, cypress-architecture.md, cypress-patterns.md, cypress-testing-strategies.md, data-driven-patterns.md, data-model.md, degradation-strategy.md, e2e-common-patterns.md, error-handling.md, figma-patterns.md, handoff-schema.md, jira-patterns.md, local-tms-formats.md, mcp-tool-inventory.md, parallel-execution.md, pattern-adherence.md, performance-patterns.md, playwright-a11y-visual.md, playwright-anti-patterns.md, playwright-assertions.md, playwright-auth-mocking.md, playwright-ci-reporting.md, playwright-mcp-tools.md, playwright-patterns.md, progress-protocol.md, qase-formats.md, qase-sync.md, refresh-patterns.md, resume-protocol-agent.md, resume-protocol.md, test-generation-patterns.md, testrail-formats.md, testrail-sync.md, tms-abstraction.md, token-budget.md, validation-checklist.md, viewport-patterns.md, zephyr-formats.md, zephyr-sync.md
+- **MCP** (`mcp/`): Atlassian (HTTP), Figma (HTTP), Playwright (stdio), TestRail (stdio), Qase (stdio), Zephyr Scale (stdio)
 - **Templates** (`claude/templates/`): 11 output templates — requirements.md, test-case.md, coverage-matrix.md, validation-report.md, execution-plan.md, execution-plan.json, checkpoint.md, refresh-diff.md, jira-coverage-comment.md, quickref.md, run-summary.md
+- **Hooks** (`claude/hooks/`): Exit guard (Stop hook, workflow persistence) + compaction resilience (PreCompact hook, state preservation) — installed by `sparq init`, refreshed by `sparq update`
 - **Rules** (`.claude/rules/`): 5 scoped rule files for path-specific validation (agents, skills, cli, references, tests)
 - **Output**: E2E test code → project test directory (`e2e/`); metadata artifacts → `.sparq/`; workflow state → `.sparq/state/`
 
@@ -85,10 +86,10 @@ Full orchestration logic lives in claude/agents/sparq-orchestrator.md. Key rules
 - **S1** Manual Creation: Reqs → manual test cases (MD + TMS export)
 - **S1+S2** Generate (Unified): Reqs → manual test cases AND E2E code in one pipeline (`/sparq:generate`)
 - **S2** Manual to E2E: Manual tests (file or TMS read) → E2E code (Playwright or Cypress per config)
-- **S3** E2E Test Generation: Reqs → E2E code directly
+- **S3** E2E Test Generation: Feature ticket or bug ticket → E2E code directly (bug tickets produce inline regression tests with `REG-{ticket}-{NNN}` IDs appended to the relevant feature spec)
 - **S4** Test Validation: Existing tests → validation report + fixes
 - **S5** Requirement Sync: Updated reqs + existing tests → diff analysis + test updates
-- **S6** Bug Regression: Bug ticket → single focused regression spec (`/sparq:regression`)
+- **S6** Publish Results: Test run output (Playwright JSON/JUnit XML) → TMS run + results (`/sparq:publish-results`)
 
 ### Coordination Rules
 - All agent-to-agent communication uses structured handoffs (claude/skills/sparq-shared/references/handoff-schema.md)
@@ -102,7 +103,7 @@ Full orchestration logic lives in claude/agents/sparq-orchestrator.md. Key rules
 - Signal format and timing rules: claude/skills/sparq-shared/references/progress-protocol.md
 
 ### Resume Protocol
-- Workflow state persisted to `.sparq/state/` (4 files: current-task.json, config-snapshot.json, parallel.json, journal.jsonl)
+- Workflow state persisted to `.sparq/state/` (5 files: current-task.json, config-snapshot.json, parallel.json, journal.jsonl, decisions.json)
 - Resume auto-detected by `/sparq:start` — checks `.sparq/state/current-task.json`, offers continue/fresh-start
 - State priority: current-task.json > journal.jsonl > execution-plan.md (legacy)
 - Full protocol: claude/skills/sparq-shared/references/resume-protocol.md
@@ -124,7 +125,7 @@ Full orchestration logic lives in claude/agents/sparq-orchestrator.md. Key rules
 - Cypress code: `get` accessors for chainables, `describe`/`it` blocks, import from support barrel
 - Coverage matrix: every REQ mapped to TC IDs, percentage calculated from acceptance criteria coverage
 - Validation findings: severity-classified (Critical/Warning/Info), unique `VF-{n}` IDs, auto-fix proposals where deterministic
-- Regression tests: unique `REG-{ticket}-{NNN}` IDs, tagged `@regression`, reuse existing page objects, single spec per bug ticket
+- Regression tests: unique `REG-{ticket}-{NNN}` IDs in test title, appended inline to the relevant feature spec, reuse existing page objects
 - IMPORTANT: All generated output follows templates in `claude/templates/` — never invent new formats
 
 ## Enterprise Patterns
@@ -168,9 +169,8 @@ Context window: 200K tokens. Fixed overhead (system + CLAUDE.md + MEMORY.md): ~1
 ### Before Committing Agent/Skill/Reference Changes
 1. YAML frontmatter has required fields (`name`, `description`, `model` for agents)
 2. All `@path` references point to existing files
-3. Run relevant eval: `npx sparq-assistant eval {case} --strict` (or `node test/evals/run-eval.mjs {case}`)
-4. `<done_criteria>` section exists and every item is verifiable
-5. Sub-agents have a handoff section (`<handoff>` tag or `## Handoff` heading) matching claude/skills/sparq-shared/references/handoff-schema.md
+3. `<done_criteria>` section exists and every item is verifiable
+4. Sub-agents have a handoff section (`<handoff>` tag or `## Handoff` heading) matching claude/skills/sparq-shared/references/handoff-schema.md
 
 ### After Prompt Optimization (agents, skills, references)
 1. No handoff entries displaced outside canonical sections (per `agents.md` Structural Rules)
@@ -188,23 +188,13 @@ Context window: 200K tokens. Fixed overhead (system + CLAUDE.md + MEMORY.md): ~1
 ## Testing
 
 - Framework: `node:test` + `node:assert/strict` (zero test deps)
-- Unit tests (`test/unit/`): 45 files testing CLI modules and eval engine
-- Integration tests (`test/integration/`): 10 files testing full init→doctor→update→uninstall lifecycle and eval flow
+- Unit tests (`test/unit/`): CLI modules and rubrics
+- Integration tests (`test/integration/`): full init→doctor→update→uninstall lifecycle
 - Helpers: `test/helpers/setup.mjs` — `createTempDir()`, `cleanTempDir()`, `createMockProject()`, `runCli()`
-- Eval framework (`test/evals/`): YAML cases, code-based rubrics (`.mjs`), model-based graders (`.md`)
-  - Automated rubrics: format-compliance, coverage-completeness, playwright-syntax, cypress-syntax, error-handling-compliance, parallel-merge
-  - Model-based graders: test-quality-grader, code-quality-grader, error-handling-grader
-  - Run: `npx sparq-assistant eval {case} --strict` (or `node test/evals/run-eval.mjs {case}`)
-- Eval self-improvement workflow (lean default + advanced path)
-  - Default flow: `sparq eval --strict` -> `sparq improve <case|--all>` -> `sparq baseline promote <case|--all>`
-  - Model readiness: if latest strict run used `mock`, run `sparq improve <case|--all> --model haiku` for generation-capable tuning
-  - Promotion policy: requires 2 consecutive clean strict passes and clear optimize gate
-  - `improve` machine-readable contract: `IMPROVE_STATUS`, `IMPROVE_ITERATIONS`, `IMPROVE_TUNED_FILES`, `NEXT_ACTION`
-  - Default help hides advanced primitives; use `sparq help advanced` to view non-default/service commands
-  - Advanced/service primitives: `/sparq:eval-reflect`, `/sparq:eval-tune`, `/sparq:optimize` (non-default)
-  - CLI analysis: `sparq eval --audit` / `--trends` / `--project <dir>` / `--allow-skips`
-  - Data: `test/evals/data/runs/` (auto-saved), `baselines/` (gold standard), `reflections/` (analysis)
-  - Pass threshold: 75%
+- Rubrics (`bin/lib/rubrics/`): 18 code-based rubrics used by `sparq lint` — deterministic, zero model inference
+  - flaky-test-detection, locator-quality, playwright-syntax, cypress-syntax, assertion-detection, format-compliance, error-handling-compliance, naming-conventions, and more
+  - Run via CLI: `sparq lint [path]` — reports findings with severity (critical/warning/info)
+- Fixtures (`test/evals/fixtures/`): 18 realistic mock Jira tickets, Figma designs, project conventions — reference corpus for manual prompt development
 
 ## Adding Content
 
@@ -212,7 +202,7 @@ Context window: 200K tokens. Fixed overhead (system + CLAUDE.md + MEMORY.md): ~1
 - **New skill**: Create `claude/skills/sparq-{name}/SKILL.md` with YAML frontmatter. CLI auto-discovers skill directories
 - **New reference**: Add to `claude/skills/sparq-shared/references/`. Reference from relevant agents/skills with `@` path syntax
 - **New template**: Add to `claude/templates/`. Reference from agents that produce that output type
-- **New eval case**: YAML in `test/evals/cases/`, fixtures in `test/evals/fixtures/`, rubric in `test/evals/rubrics/`
+- **New rubric**: Add `.mjs` to `bin/lib/rubrics/` implementing `evaluate(content, checks, options)` → `{ score, maxScore, findings }`. Register in `FILE_RUBRICS` in `bin/lib/commands/lint.mjs` and add unit test in `test/unit/`
 - **New MCP config**: JSON in `mcp/`. CI validates all `mcp/*.json` files. Use placeholder credentials only
 
 ## CI

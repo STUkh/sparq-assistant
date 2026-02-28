@@ -114,3 +114,13 @@ Written to: `.sparq/tms-export/TC-{feature}-qase.json`
 - Duplicate case: match by title prefix (TC ID pattern), update instead of create
 - Batch creation: use `bulk_create_cases` for >5 cases, 2s delay between batches of 20
 </qase_error_handling>
+
+<qase_local_api_fallback>
+When Qase MCP is unavailable, the `/sparq:qase-api` skill provides direct REST API access via curl/Bash.
+- Skill: `claude/skills/sparq-qase-api/SKILL.md`
+- References: `claude/skills/sparq-qase-api/references/` (cases-suites.md, runs-results.md, other-endpoints.md)
+- Requires: `$QASE_API_TOKEN` environment variable
+- Fallback chain: MCP -> `/sparq:qase-api` REST -> WebSearch docs -> file export JSON
+See `degradation-strategy.md` `<local_skill_fallback>` for full chain.
+For complete sync workflow with verification and recovery, see `qase-sync.md`.
+</qase_local_api_fallback>

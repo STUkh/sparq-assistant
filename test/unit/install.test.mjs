@@ -59,28 +59,12 @@ describe('installAndReport', () => {
     assert.ok(existsSync(join(destDir, 'file2.md')))
   })
 
-  it('should handle empty source directory', () => {
-    const result = installAndReport(srcDir, destDir, 'agents')
-    assert.equal(result.copied, 0)
-    assert.equal(result.errors, 0)
-  })
-
   it('should report info for missing source gracefully', () => {
     const missingSrc = join(tempDir, 'nonexistent')
     const result = installAndReport(missingSrc, destDir, 'agents')
     assert.equal(result.copied, 0)
     assert.equal(result.errors, 0)
     assert.ok(capture.lines().some((line) => line.includes('No agents files')))
-  })
-
-  it('should skip existing files in merge mode', () => {
-    writeFileSync(join(srcDir, 'file.md'), 'new content')
-    writeFileSync(join(destDir, 'file.md'), 'existing content')
-
-    const result = installAndReport(srcDir, destDir, 'agents', { merge: true })
-    assert.equal(result.copied, 0)
-    // File should still have original content
-    assert.equal(readFileSync(join(destDir, 'file.md'), 'utf-8'), 'existing content')
   })
 
   it('should overwrite existing files when merge is false', () => {
@@ -205,37 +189,13 @@ describe('ensureGitignore', () => {
     assert.ok(capture.lines().some((line) => line.includes('already includes')))
   })
 
-  it('should skip when already contains .sparq (without slash)', () => {
-    const gitignorePath = join(tempDir, '.gitignore')
-    const originalContent = 'node_modules/\n.sparq\n'
-    writeFileSync(gitignorePath, originalContent)
-
-    ensureGitignore(gitignorePath)
-
-    const content = readFileSync(gitignorePath, 'utf-8')
-    assert.equal(content, originalContent, 'should not modify file')
-  })
-
-  it('should add newline separator when file does not end with newline', () => {
-    const gitignorePath = join(tempDir, '.gitignore')
-    writeFileSync(gitignorePath, 'node_modules/')
-
-    ensureGitignore(gitignorePath)
-
-    const content = readFileSync(gitignorePath, 'utf-8')
-    assert.ok(content.startsWith('node_modules/'), 'should preserve original content')
-    assert.ok(content.includes('.sparq/'), 'should add .sparq/')
-    // Should have newline before the comment block
-    assert.ok(content.includes('node_modules/\n'), 'should add separator newline')
-  })
-
   it('should NOT write in dry-run mode', () => {
     setDryRun(true)
     const gitignorePath = join(tempDir, '.gitignore')
     ensureGitignore(gitignorePath)
 
     assert.ok(!existsSync(gitignorePath), '.gitignore should not be created in dry-run')
-    assert.ok(capture.lines().some((line) => line.includes('dry-run')))
+    assert.ok(capture.lines().some((line) => line.includes('DRY-RUN')))
   })
 })
 

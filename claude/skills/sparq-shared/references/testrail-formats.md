@@ -151,6 +151,16 @@ Non-canonical TestRail types (reference only): 1=Acceptance, 3=Automated, 7=Perf
 
 **Batch creation**: Create all sections first with `mcp__testrail__add_section` (collect IDs) -> create cases in batches of 10-20 with `mcp__testrail__add_case` -> 1s delay between batches -> log created case IDs for traceability.
 
+<testrail_local_api_fallback>
+When TestRail MCP is unavailable, the `/sparq:testrail-api` skill provides direct REST API access via curl/Bash.
+- Skill: `claude/skills/sparq-testrail-api/SKILL.md`
+- References: `claude/skills/sparq-testrail-api/references/` (projects-suites-sections-cases.md, runs-results-plans.md, other-endpoints.md)
+- Requires: `$TESTRAIL_BASE_URL`, `$TESTRAIL_USERNAME`, `$TESTRAIL_API_KEY` environment variables
+- Fallback chain: MCP -> `/sparq:testrail-api` REST -> WebSearch docs -> file export XML
+See `degradation-strategy.md` `<local_skill_fallback>` for full chain.
+For complete sync workflow with verification and recovery, see `testrail-sync.md`.
+</testrail_local_api_fallback>
+
 ## See Also
 
 - `qase-formats.md` — Qase export format and MCP tools

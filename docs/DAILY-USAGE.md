@@ -4,7 +4,7 @@ Use `/sparq:start` when you are unsure which command to run; it routes to the be
 
 Two-step mental model:
 - `Generate` lane: `/sparq:generate-manual`, `/sparq:generate-e2e`, `/sparq:generate`, `/sparq:manual-to-e2e`
-- `Maintain` lane: `/sparq:validate`, `/sparq:sync`, `/sparq:regression`, `/sparq:export`
+- `Maintain` lane: `/sparq:validate`, `/sparq:sync`, `/sparq:export`
 
 ## Which Command Do I Need?
 
@@ -49,6 +49,7 @@ flowchart TD
 | Gather requirements without generating tests | `/sparq:analyze EP-14` |
 | Export test cases to TestRail, Qase, local folder, Jira, or Confluence | `/sparq:export login` |
 | Resume an interrupted workflow | `/sparq:resume` |
+| Check generated E2E test code quality before committing | `npx sparq-assistant lint e2e/` |
 
 ## Quick Reference
 
@@ -62,11 +63,11 @@ flowchart TD
 - `/sparq:sync` -- Sync tests with updated requirements: `/sparq:sync EP-14 e2e/specs/auth/login.spec.ts`
 - `/sparq:export` -- Export to TestRail, Qase, local folder, Jira, or Confluence: `/sparq:export login`
 - `/sparq:resume` -- Resume an interrupted workflow: `/sparq:resume`
-- `/sparq:regression` -- Generate regression test from bug ticket: `/sparq:regression BUG-42`
+- `/sparq:publish-results` -- Publish test run results to TMS: `/sparq:publish-results`
 - `/sparq:refactor` -- Refactor selectors/patterns across tests: `/sparq:refactor --from "old" --to "new" e2e/`
 - `/sparq:init` -- Bootstrap SparQ configuration: `/sparq:init`
 - `/sparq:config` -- View or edit SparQ configuration: `/sparq:config`
-- `/sparq:tune` -- Apply model tier guidance to agents: `/sparq:tune`
+- `npx sparq-assistant lint [path]` -- Check E2E code quality (deterministic rubrics, CI-compatible): `npx sparq-assistant lint e2e/`
 - `/sparq:playwright-best-practices` -- Playwright testing best practices reference
 - `/sparq:cypress-best-practices` -- Cypress testing best practices reference
 
@@ -74,7 +75,7 @@ flowchart TD
 
 | Input Type | Format | Example | Works With |
 |------------|--------|---------|------------|
-| Jira ticket | Project key + number | `EP-14`, `PROJ-456` | analyze, generate, generate-manual, generate-e2e, sync, regression |
+| Jira ticket | Project key + number | `EP-14`, `PROJ-456` | analyze, generate, generate-manual, generate-e2e, sync |
 | Figma URL | Full Figma design URL | `https://www.figma.com/design/abc123` | analyze, generate, generate-manual |
 | Confluence URL | Full page URL | `https://team.atlassian.net/wiki/spaces/PROJ/pages/123` | analyze, generate, generate-manual |
 | File path | Relative or absolute path | `e2e/specs/auth/`, `.sparq/test-cases/TC-login-manual.md` | manual-to-e2e, validate, sync |
@@ -168,6 +169,26 @@ Detects the last execution plan and persisted handoffs, validates staleness (war
 
 > **Note:** SparQ adapts to your project automatically. Whether you use Vue, React, Angular, or Svelte, the commands and workflows below work the same way. Your framework, UI library, and test runner are detected from `package.json` during setup.
 
+### 9. "I want to check generated test code quality"
+
+```bash
+npx sparq-assistant lint e2e/
+npx sparq-assistant lint e2e/specs/auth/        # scope to a directory
+npx sparq-assistant lint e2e/ --strict          # non-zero exit on critical findings (CI)
+```
+
+Runs deterministic code-quality rubrics against E2E test files — no AI inference, no network calls, instant. Reports per-file findings with severity:
+
+- **Flaky patterns** -- hardcoded sleeps, race-prone assertions
+- **Locator quality** -- fragile selectors, missing `data-testid` usage
+- **Playwright / Cypress syntax** -- framework convention violations
+- **Assertion coverage** -- test blocks with no assertions
+- **Naming conventions** -- inconsistent ID formats, file naming
+- **Error handling** -- missing handling in critical flows
+- **Format compliance** -- REQ-xxx / TC-xxx ID format
+
+Use `--strict` in CI pipelines to fail the build on critical findings. Output: findings to stdout only (no `.sparq/` file created).
+
 ## Tips for QA Engineers
 
 **Review before approving.** Checkpoints exist to catch issues early. Read through proposed test plans and generated test cases before approval -- the AI may miss domain-specific edge cases.
@@ -195,9 +216,11 @@ Detects the last execution plan and persisted handoffs, validates staleness (war
 
 **Diagnose issues.** Run `npx sparq-assistant doctor` to verify your installation — checks agents, skills, config, MCP servers, and E2E setup. Add `--deep` for MCP credential and endpoint validation.
 
-**Reduce checkpoint prompts.** Add `"checkpointLevel": "standard"` to `preferences` in `sparq.config.json` to collapse low-risk checkpoints. Use `"minimal"` to keep only the output review gate.
+**Reduce checkpoint prompts.** Add `"checkpointLevel": "standard"` to `preferences` in `sparq.config.json` to collapse low-risk checkpoints. Use `"fast"` to keep only the output review gate.
 
 **Clean removal.** Run `npx sparq-assistant uninstall` to remove all SparQ files from the project.
+
+**Run lint before committing generated tests.** After any E2E generation run, `npx sparq-assistant lint e2e/` catches flaky patterns, fragile locators, and missing assertions before they reach your test suite. No model inference — it's instant. Add `--strict` to make it a hard gate in CI.
 
 ## When MCP Servers Are Unavailable
 

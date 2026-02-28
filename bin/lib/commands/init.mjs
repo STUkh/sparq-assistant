@@ -41,9 +41,18 @@ import {
   prompt,
   toForwardSlash,
 } from '../files.mjs'
+import { installHooks } from '../hooks.mjs'
 import { ensureGitignore, installAndReport, installRuleFile, mergeMcpConfigs } from '../install.mjs'
+import { acquireLock, releaseLock } from '../lock.mjs'
 import { buildManifest, writeManifest } from '../manifest.mjs'
 import { generatePermissions } from '../permissions.mjs'
+import {
+  detectPlatforms,
+  generateAgentsMd,
+  installPlatformExtras,
+  removeAgentsMd,
+  removePlatformExtras,
+} from '../platform.mjs'
 import {
   checkInterrupted,
   dryRun,
@@ -52,11 +61,11 @@ import {
   getVerbosity,
   heading,
   info,
+  isDryRun,
   ok,
   style,
   warn,
 } from '../state.mjs'
-import { applyLayerOne, updateAgentModels } from '../tune-engine.mjs'
 import {
   isValidConfluenceKey,
   isValidJiraKey,
@@ -89,6 +98,7 @@ function deriveFeatures(gathered, e2eFramework) {
   if (gathered.figmaEnabled) names.push('figma')
   if (gathered.tmsProvider === 'testrail') names.push('testrail')
   if (gathered.tmsProvider === 'qase') names.push('qase')
+  if (gathered.tmsProvider === 'zephyr') names.push('zephyr')
   if (gathered.tmsProvider === 'local') names.push('tms-local')
   names.push('export')
   return resolveFeatures(names)
@@ -136,7 +146,7 @@ async function promptValidatedKey(rl, label, defaultVal, validator) {
 async function promptTestRailConfig(rl) {
   let testRailProjectId = null
   for (let attempt = 1; attempt <= MAX_PROMPT_ATTEMPTS; attempt++) {
-    const pid = await prompt(rl, 'TestRail project ID', '')
+    const pid = await prompt(rl, 'TestRail project ID (e.g., 1 or 42)', '')
     testRailProjectId = parseTestRailId(pid)
     if (!pid || testRailProjectId !== null) break
     if (attempt < MAX_PROMPT_ATTEMPTS) {
@@ -151,7 +161,7 @@ async function promptTestRailConfig(rl) {
 
   let testRailSuiteId = null
   for (let attempt = 1; attempt <= MAX_PROMPT_ATTEMPTS; attempt++) {
-    const sid = await prompt(rl, 'TestRail suite ID', '')
+    const sid = await prompt(rl, 'TestRail suite ID (e.g., 1 or 42)', '')
     testRailSuiteId = parseTestRailId(sid)
     if (!sid || testRailSuiteId !== null) break
     if (attempt < MAX_PROMPT_ATTEMPTS) {
@@ -187,6 +197,30 @@ async function promptQaseConfig(rl) {
   return { tmsProvider: 'qase', qaseProjectCode: code || null }
 }
 
+async function promptZephyrConfig(rl) {
+  let projectKey = ''
+  for (let attempt = 1; attempt <= MAX_PROMPT_ATTEMPTS; attempt++) {
+    const raw = await prompt(rl, 'Zephyr Scale project key (e.g., PROJ)', '')
+    projectKey = raw.toUpperCase().trim()
+    if (!projectKey || /^[A-Z][A-Z0-9_-]*$/.test(projectKey)) break
+    if (attempt < MAX_PROMPT_ATTEMPTS) {
+      warn(
+        `Invalid Zephyr project key "${projectKey}". ` +
+          `Expected: uppercase letters/digits/hyphens starting with a letter, e.g., PROJ. ` +
+          `(attempt ${attempt}/${MAX_PROMPT_ATTEMPTS})`,
+      )
+    } else {
+      warn(
+        `Invalid Zephyr project key "${projectKey}" after ${MAX_PROMPT_ATTEMPTS} attempts. Skipping.`,
+      )
+      projectKey = ''
+    }
+  }
+  const folderRaw = await prompt(rl, 'Zephyr folder ID (optional, e.g., 123)', '')
+  const folderId = folderRaw ? Number.parseInt(folderRaw, 10) || null : null
+  return { tmsProvider: 'zephyr', zephyrProjectKey: projectKey || null, zephyrFolderId: folderId }
+}
+
 async function promptLocalConfig(rl) {
   const outputDir = await prompt(rl, 'TMS export directory', '.sparq/tms-export')
   const fmt = await prompt(rl, 'Export format (json/markdown)', 'json')
@@ -197,6 +231,7 @@ async function promptLocalConfig(rl) {
 const TMS_PROMPTERS = {
   testrail: promptTestRailConfig,
   qase: promptQaseConfig,
+  zephyr: promptZephyrConfig,
   local: promptLocalConfig,
 }
 
@@ -206,7 +241,7 @@ const TMS_PROMPTERS = {
 async function promptTms(rl) {
   const providerChoice = await prompt(
     rl,
-    'Test management system (testrail/qase/local/none)',
+    'Test management system (testrail/qase/zephyr/local/none)',
     'none',
   )
   const provider = providerChoice.toLowerCase().trim()
@@ -256,9 +291,6 @@ function displayConfigPreview(gathered, features) {
   console.log(`    TMS:            ${style.cyan(gathered.tmsProvider || 'none')}`)
   console.log(`    Checkpoints:    ${style.cyan(gathered.checkpointLevel)}`)
   console.log(`    Features:       ${style.cyan(featureNames.join(', '))}`)
-  if (gathered.modelTier && gathered.modelTier !== 'premium') {
-    console.log(`    Model tier:     ${style.cyan(gathered.modelTier)}`)
-  }
   console.log(
     `    Install:        ${style.dim(`${agentCount} agents, ${skillCount} skills, ${templateCount} templates`)}`,
   )
@@ -275,14 +307,14 @@ async function gatherInteractiveConfig(targetDir) {
     console.log()
     info('Answer the following to configure your project.\n')
 
-    // Step 1/7: Project basics
-    info(style.bold('Step 1/7: Project basics'))
+    // Step 1/6: Project basics
+    info(style.bold('Step 1/6: Project basics'))
     const rawName = await prompt(rl, 'Project name', basename(targetDir))
     const projectName = sanitizeProjectName(rawName)
 
-    // Step 2/7: Integration sources
+    // Step 2/6: Integration sources
     console.log()
-    info(style.bold('Step 2/7: Integration sources'))
+    info(style.bold('Step 2/6: Integration sources'))
     const figmaEnabled = await confirm(rl, 'Enable Figma integration?', true)
     const jiraEnabled = await confirm(rl, 'Enable Jira integration?', true)
     const jiraKey = jiraEnabled
@@ -294,19 +326,19 @@ async function gatherInteractiveConfig(targetDir) {
       : ''
     const localEnabled = await confirm(rl, 'Enable local requirements (docs/specs)?', true)
 
-    // Step 3/7: Test setup
+    // Step 3/6: Test setup
     console.log()
-    info(style.bold('Step 3/7: Test setup'))
+    info(style.bold('Step 3/6: Test setup'))
     const testDir = await prompt(rl, 'Playwright test directory', 'e2e')
 
-    // Step 4/7: Test management system
+    // Step 4/6: Test management system
     console.log()
-    info(style.bold('Step 4/7: Test management system'))
+    info(style.bold('Step 4/6: Test management system'))
     const tmsConfig = await promptTms(rl)
 
-    // Step 5/7: Export targets
+    // Step 5/6: Export targets
     console.log()
-    info(style.bold('Step 5/7: Export targets'))
+    info(style.bold('Step 5/6: Export targets'))
     const jiraExportEnabled = jiraEnabled
       ? await confirm(rl, 'Link test results back to Jira tickets?', true)
       : false
@@ -314,26 +346,56 @@ async function gatherInteractiveConfig(targetDir) {
       ? await confirm(rl, 'Publish test plans to Confluence?', true)
       : false
 
-    // Step 6/7: Preferences
+    // Step 6/6: Preferences
     console.log()
-    info(style.bold('Step 6/7: Preferences'))
-    const checkpointLevel = await prompt(rl, 'Checkpoint verbosity (full/standard/fast)', 'full')
-
-    // Step 7/7: Model tier
-    console.log()
-    info(style.bold('Step 7/7: Model tier'))
-    info('  premium  — best quality, highest cost (opus + sonnet)')
-    info('  balanced — good quality, lower cost (all sonnet)')
-    info('  economy  — lowest cost, needs guidance (all haiku)')
-    const tierChoice = await prompt(rl, 'Model tier', 'premium')
-    const tierLower = tierChoice.toLowerCase()
-    let modelTier
-    if (['premium', 'balanced', 'economy'].includes(tierLower)) {
-      modelTier = tierLower
-    } else {
-      warn(`Unknown tier "${tierChoice}" — using "premium"`)
-      modelTier = 'premium'
+    info(style.bold('Step 6/6: Preferences'))
+    info('Checkpoint levels:')
+    info('  full     — pause at every phase for approval')
+    info('  standard — auto-approve low-risk phases, pause at outputs')
+    info('  fast     — auto-approve all except final output review')
+    const validCheckpointLevels = ['full', 'standard', 'fast']
+    let checkpointLevel = await prompt(rl, 'Checkpoint verbosity (full/standard/fast)', 'full')
+    while (!validCheckpointLevels.includes(checkpointLevel)) {
+      warn(`Invalid value '${checkpointLevel}'. Must be one of: full, standard, fast`)
+      checkpointLevel = await prompt(rl, 'Checkpoint verbosity (full/standard/fast)', 'full')
     }
+    info(
+      'Batch approval: plan-once, run-mostly-uninterrupted.' +
+        ' Presents a full Phase 0 plan then auto-approves intermediate checkpoints.',
+    )
+    const batchApproval = await confirm(rl, 'Enable batch approval mode?', false)
+
+    const validViewportPresets = ['desktop', 'laptop', 'tablet', 'mobile', 'mobile-lg']
+    const viewportsEnabled = await confirm(
+      rl,
+      'Enable viewport matrix testing? (Tests run across multiple screen sizes)',
+      false,
+    )
+    let viewportPresets = []
+    if (viewportsEnabled) {
+      info(`Available presets: ${validViewportPresets.join(' ')}`)
+      const presetsInput = await prompt(
+        rl,
+        'Select viewport presets (space-separated: desktop laptop tablet mobile mobile-lg)',
+        'desktop mobile',
+      )
+      const rawPresets = presetsInput
+        .split(' ')
+        .map((p) => p.trim().toLowerCase())
+        .filter(Boolean)
+      const invalid = rawPresets.filter((p) => !validViewportPresets.includes(p))
+      viewportPresets = rawPresets.filter((p) => validViewportPresets.includes(p))
+      if (invalid.length > 0) {
+        warn(`Unknown viewport presets ignored: ${invalid.join(', ')}`)
+      }
+      if (viewportPresets.length === 0) viewportPresets = ['desktop', 'mobile']
+    }
+
+    const separateRegressionStep = await confirm(
+      rl,
+      'Add separate regression test step to CI?',
+      false,
+    )
 
     rl.close()
     return {
@@ -348,8 +410,11 @@ async function gatherInteractiveConfig(targetDir) {
       ...tmsConfig,
       jiraExportEnabled,
       confluenceExportEnabled,
+      viewportsEnabled,
+      viewportPresets,
       checkpointLevel,
-      modelTier,
+      batchApproval,
+      separateRegressionStep,
     }
   } catch (err) {
     rl.close()
@@ -392,8 +457,11 @@ async function gatherDefaultsConfig(targetDir) {
     tmsProvider: null,
     jiraExportEnabled: false,
     confluenceExportEnabled: false,
+    viewportsEnabled: false,
+    viewportPresets: [],
     checkpointLevel: 'full',
-    modelTier: 'premium',
+    batchApproval: false,
+    separateRegressionStep: false,
   }
 }
 
@@ -416,8 +484,11 @@ export async function gatherConfig(targetDir, nonInteractive, defaults) {
       tmsProvider: null,
       jiraExportEnabled: false,
       confluenceExportEnabled: false,
+      viewportsEnabled: false,
+      viewportPresets: [],
       checkpointLevel: 'full',
-      modelTier: 'premium',
+      batchApproval: false,
+      separateRegressionStep: false,
     }
   }
   if (defaults) return gatherDefaultsConfig(targetDir)
@@ -496,6 +567,26 @@ function detectExistingContent(claudeDir) {
   }
 
   return conflicts
+}
+
+/**
+ * Prompt for confirmation when existing non-SparQ content is detected.
+ * Returns true to proceed, false to abort.
+ */
+async function confirmExistingContent(claudeDir, nonInteractive) {
+  const existingContent = detectExistingContent(claudeDir)
+  if (existingContent.length === 0) return true
+  info('Existing non-SparQ content detected in .claude/:')
+  for (const item of existingContent) info(`  ${item}`)
+  info('These files will not be modified.')
+  if (!nonInteractive) {
+    const proceed = await promptChoice('Continue with init? (y/N)', ['y', 'n'], 'n')
+    if (proceed !== 'y') {
+      info('Init cancelled.')
+      return false
+    }
+  }
+  return true
 }
 
 /**
@@ -604,18 +695,41 @@ function detectAndReportTechStack(targetDir) {
   return techStack
 }
 
+// ---------------------------------------------------------------------------
+// Init checkpoint — survives SIGINT / mid-install crashes
+// ---------------------------------------------------------------------------
+
+const INIT_CHECKPOINT = '.sparq/.init-checkpoint'
+
 /**
- * Apply Layer 1 model tier enhancements during init (non-premium tiers only).
+ * Write a checkpoint file at the start of the install pipeline.
+ * If a subsequent run detects this file it knows a previous install was interrupted.
  */
-function applyModelTierIfNeeded(targetDir, modelTier) {
-  if (!modelTier || modelTier === 'premium') return
-  heading(`${emoji.config}Applying ${modelTier} tier enhancements...`)
-  const l1 = applyLayerOne(targetDir, modelTier).filter((r) => r.status === 'applied')
-  if (l1.length > 0) ok(`Layer 1: ${l1.length} agent(s) enhanced`)
-  const models = updateAgentModels(targetDir, modelTier).filter((r) => r.changed)
-  if (models.length > 0) ok(`Model fields: ${models.length} agent(s) updated`)
-  info('Run /sparq:tune in Claude Code for AI-powered guidance (Layer 2)')
+function writeInitCheckpoint(targetDir) {
+  try {
+    ensureDir(join(targetDir, '.sparq'))
+    writeFileSync(
+      join(targetDir, INIT_CHECKPOINT),
+      JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }),
+      'utf-8',
+    )
+  } catch {
+    // Non-fatal — checkpoint is best-effort
+  }
 }
+
+/**
+ * Remove the checkpoint on successful completion.
+ */
+function deleteInitCheckpoint(targetDir) {
+  try {
+    unlinkSync(join(targetDir, INIT_CHECKPOINT))
+  } catch {
+    // Non-fatal — may not exist if .sparq/ was cleaned up already
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 /**
  * Run the main installation pipeline.
@@ -623,14 +737,6 @@ function applyModelTierIfNeeded(targetDir, modelTier) {
 function runInstallPipeline(targetDir, claudeDir, gathered, features, ciProvider) {
   const e2eConfig = detectAndReportE2E(targetDir)
   const techStack = detectAndReportTechStack(targetDir)
-
-  // Conflict detection (I12)
-  const existingContent = detectExistingContent(claudeDir)
-  if (existingContent.length > 0) {
-    info('Existing non-SparQ content detected in .claude/:')
-    for (const item of existingContent) info(`  ${item}`)
-    info('These files will not be modified.')
-  }
 
   checkInterrupted()
   // Only install the matching framework's best-practices skill
@@ -675,11 +781,17 @@ function runInstallPipeline(targetDir, claudeDir, gathered, features, ciProvider
   const featureNames = [...resolvedForPerms]
   generatePermissions(targetDir, { features: featureNames, framework: e2eConfig.framework })
 
+  // --- Hooks (exit guard + compaction resilience) ---
+  installHooks(targetDir)
+
   // CI template generation (I7)
   if (ciProvider) {
     heading(`${emoji.config}Generating CI workflow...`)
     checkInterrupted()
-    const ciResult = generateCiTemplate(targetDir, { provider: ciProvider })
+    const ciResult = generateCiTemplate(targetDir, {
+      provider: ciProvider,
+      separateRegressionStep: gathered.separateRegressionStep,
+    })
     if (!ciResult.created && ciResult.reason) {
       warn(ciResult.reason)
     }
@@ -688,10 +800,24 @@ function runInstallPipeline(targetDir, claudeDir, gathered, features, ciProvider
   heading(`${emoji.claudeMd}Installing rule file...`)
   installRuleFile(targetDir, techStack, e2eConfig)
 
-  applyModelTierIfNeeded(targetDir, gathered.modelTier)
-
   heading(`${emoji.gitignore}Updating .gitignore...`)
   ensureGitignore(join(targetDir, '.gitignore'))
+
+  // --- Platform extras (Cursor, Codex, etc.) ---
+  const detectedPlatforms = detectPlatforms(targetDir)
+  if (detectedPlatforms.length > 0) {
+    heading(`${emoji.config}Installing platform extras (${detectedPlatforms.join(', ')})...`)
+    checkInterrupted()
+    installPlatformExtras(targetDir, detectedPlatforms, {
+      techStack,
+      e2eConfig,
+      mcpServersAdded: addedServers,
+    })
+  }
+
+  // --- AGENTS.md (all platforms) ---
+  heading(`${emoji.claudeMd}Generating AGENTS.md...`)
+  generateAgentsMd(targetDir)
 
   heading(`${emoji.manifest}Writing file manifest...`)
   const manifest = buildManifest(targetDir)
@@ -700,6 +826,7 @@ function runInstallPipeline(targetDir, claudeDir, gathered, features, ciProvider
   }
   writeManifest(targetDir, manifest)
   ok(`.sparq/.manifest.json created (${Object.keys(manifest).length} files tracked)`)
+  deleteInitCheckpoint(targetDir)
 }
 
 // ---------------------------------------------------------------------------
@@ -767,6 +894,9 @@ function removeIfEmpty(dirPath) {
  */
 function rollbackInit(targetDir, err) {
   fail(`Setup failed: ${err.message}`)
+  info(
+    `Run with --verbose for full error details, or check file permissions in ${toForwardSlash(targetDir)}`,
+  )
   if (getVerbosity() === 'verbose' && err.stack) {
     console.log(`  ${style.dim(err.stack.split('\n').slice(1).join('\n  '))}`)
   } else if (err.stack) {
@@ -805,6 +935,12 @@ function rollbackInit(targetDir, err) {
 
   // 5b. Remove rule file
   removed += safeUnlink(join(claudeDir, 'rules', 'sparq.md'), 'rules/sparq.md')
+
+  // 5c. Remove AGENTS.md SparQ block
+  removeAgentsMd(targetDir)
+
+  // 5d. Remove platform extras (.cursor/, .codex/, .agents/ SparQ files)
+  removePlatformExtras(targetDir, detectPlatforms(targetDir))
 
   // 6. Clean up empty .claude/ subdirectories left behind
   for (const sub of ['templates', 'skills', 'agents', 'rules']) {
@@ -851,10 +987,67 @@ async function confirmDefaultsConfig(gathered, targetDir, resolvedFeatures) {
   return edited
 }
 
+/**
+ * Acquire the concurrency lock or emit an actionable error and return false.
+ * Returns true when in dry-run mode (lock not needed).
+ */
+function tryAcquireLock(targetDir) {
+  if (isDryRun()) return true
+  const lockResult = acquireLock(targetDir)
+  if (lockResult.acquired) return true
+  const age = lockResult.ageMs ? ` (running for ${Math.round(lockResult.ageMs / 1000)}s)` : ''
+  fail(`Another SparQ command is already running (PID ${lockResult.pid})${age}.`)
+  info('If this is stale, run: sparq clean --type lock')
+  return false
+}
+
+/**
+ * Clean up any stale checkpoint, write a fresh one, then run the install pipeline.
+ * Rolls back and exits on failure.
+ */
+async function runInstallFlow(targetDir, claudeDir, gathered, features, ciProvider) {
+  // If a previous install was interrupted (SIGINT, crash, or rollback failure),
+  // a stale checkpoint file remains. Auto-clean before retrying.
+  if (!isDryRun() && existsSync(join(targetDir, INIT_CHECKPOINT))) {
+    rollbackInit(
+      targetDir,
+      new Error('previous install was interrupted — cleaning up before retrying'),
+    )
+  }
+
+  // Write checkpoint immediately after all user confirmations and before any file
+  // operations. This closes the window between confirmations and pipeline start —
+  // if the process crashes here the next run will detect the checkpoint and rollback.
+  if (!isDryRun()) writeInitCheckpoint(targetDir)
+
+  try {
+    runInstallPipeline(targetDir, claudeDir, gathered, features, ciProvider)
+    await cmdDoctor(targetDir)
+    heading(`${emoji.complete}Setup complete!`)
+    info(`Run ${style.bold('npx sparq-assistant doctor')} at any time to verify your setup.`)
+    info(`Start your workflow with ${style.bold('/sparq:start')}.`)
+    console.log()
+  } catch (err) {
+    rollbackInit(targetDir, err)
+    process.exit(EXIT_GENERAL)
+  }
+}
+
 export async function cmdInit(
   targetDir,
-  { nonInteractive = false, defaults = false, features: featureSelection, ciProvider } = {},
+  {
+    nonInteractive = false,
+    defaults = false,
+    features: featureSelection,
+    ciProvider,
+    workspace = null,
+  } = {},
 ) {
+  // --workspace mode: install only workspace-specific E2E config, skip global installs
+  if (workspace) {
+    return cmdInitWorkspace(targetDir, workspace, { nonInteractive, defaults })
+  }
+
   heading(`${emoji.init}SparQ QA Assistant — Setup Wizard`)
 
   if (!checkNodeVersion(22)) {
@@ -875,31 +1068,77 @@ export async function cmdInit(
     `.claude/ directory ready at ${toForwardSlash(relative(process.cwd(), claudeDir)) || toForwardSlash(claudeDir)}`,
   )
 
-  const features = featureSelection ? resolveFeatures(featureSelection) : null
-  if (featureSelection) {
-    info(`Selected features: ${[...features].join(', ')}`)
-  }
-
-  let gathered = await gatherConfig(targetDir, nonInteractive, defaults)
-  checkInterrupted()
-
-  const resolvedFeatures = features || new Set(ALL_FEATURE_NAMES)
-  displayConfigPreview(gathered, resolvedFeatures)
-
-  if (defaults) {
-    gathered = await confirmDefaultsConfig(gathered, targetDir, resolvedFeatures)
-    if (!gathered) return
-  }
+  if (!tryAcquireLock(targetDir)) process.exit(EXIT_GENERAL)
 
   try {
-    runInstallPipeline(targetDir, claudeDir, gathered, features, ciProvider)
-    await cmdDoctor(targetDir)
-    heading(`${emoji.complete}Setup complete!`)
-    info(`Run ${style.bold('npx sparq-assistant doctor')} at any time to verify your setup.`)
-    info(`Start your workflow in Claude Code with ${style.bold('/sparq:start')}.`)
+    const features = featureSelection ? resolveFeatures(featureSelection) : null
+    if (featureSelection) {
+      info(`Selected features: ${[...features].join(', ')}`)
+    }
+
+    let gathered = await gatherConfig(targetDir, nonInteractive, defaults)
+    checkInterrupted()
+
+    const resolvedFeatures = features || new Set(ALL_FEATURE_NAMES)
+    displayConfigPreview(gathered, resolvedFeatures)
+
+    if (defaults) {
+      gathered = await confirmDefaultsConfig(gathered, targetDir, resolvedFeatures)
+      if (!gathered) return
+    }
+
+    if (!(await confirmExistingContent(claudeDir, nonInteractive))) return
+
+    await runInstallFlow(targetDir, claudeDir, gathered, features, ciProvider)
+  } finally {
+    releaseLock(targetDir)
+  }
+}
+
+/**
+ * Workspace-mode init: install only the workspace-specific sparq.config.json.
+ * Skips global agent/skill/template installation (those are root-level).
+ *
+ * @param {string} rootDir - Absolute path to the repo root
+ * @param {string} workspacePath - Relative path of the workspace (e.g., "packages/web")
+ * @param {object} options
+ * @param {boolean} options.nonInteractive
+ * @param {boolean} options.defaults
+ */
+async function cmdInitWorkspace(
+  rootDir,
+  workspacePath,
+  { nonInteractive = false, defaults = false } = {},
+) {
+  heading(`${emoji.init}SparQ QA Assistant — Workspace Setup`)
+  info(
+    `Detected workspace mode. Installing E2E configuration for ${style.bold(workspacePath)} only.`,
+  )
+  console.log()
+
+  if (!checkNodeVersion(22)) {
+    fail('Node.js >= 22 is required. Please upgrade and try again.')
+    process.exit(EXIT_GENERAL)
+  }
+
+  const wsDir = join(rootDir, workspacePath)
+  if (!validateTargetDir(wsDir)) process.exit(EXIT_FILESYSTEM)
+
+  const gathered = await gatherConfig(wsDir, nonInteractive, defaults)
+  checkInterrupted()
+
+  const e2eConfig = detectAndReportE2E(wsDir)
+  const techStack = detectAndReportTechStack(wsDir)
+
+  try {
+    generateConfig(wsDir, gathered, e2eConfig, techStack)
+    ok(`Workspace config written to ${toForwardSlash(join(workspacePath, 'sparq.config.json'))}`)
+    info(
+      `To run agents for this workspace, use ${style.bold(`--workspace ${workspacePath}`)} flags.`,
+    )
     console.log()
   } catch (err) {
-    rollbackInit(targetDir, err)
+    fail(`Workspace init failed: ${err.message}`)
     process.exit(EXIT_GENERAL)
   }
 }

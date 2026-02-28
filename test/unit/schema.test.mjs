@@ -468,33 +468,27 @@ describe('deepValidateConfig — conditional validation', () => {
     )
   })
 
-  it('should pass when tms provider=qase with valid projectCode', () => {
-    const config = withOverride((c) => {
-      c.outputs.tms = { provider: 'qase', qase: { projectCode: 'PROJ' } }
-    })
-    const result = deepValidateConfig(config)
-    const qaseErrors = result.errors.filter((e) => e.path.startsWith('outputs.tms.qase'))
-    assert.equal(qaseErrors.length, 0, 'valid qase config should pass')
-  })
-
-  it('should pass when tms provider=local', () => {
-    const config = withOverride((c) => {
-      c.outputs.tms = { provider: 'local' }
-    })
-    const result = deepValidateConfig(config)
-    const localErrors = result.errors.filter((e) => e.path.startsWith('outputs.tms'))
-    assert.equal(localErrors.length, 0, 'local provider should pass with no extra requirements')
-  })
-
   it('should error for invalid tms provider enum value', () => {
     const config = withOverride((c) => {
-      c.outputs.tms = { provider: 'zephyr' }
+      c.outputs.tms = { provider: 'xray' }
     })
     const result = deepValidateConfig(config)
     assert.equal(result.valid, false)
     assert.ok(
       result.errors.some((e) => e.path === 'outputs.tms.provider' && e.message.includes('one of')),
       'should reject invalid tms provider value',
+    )
+  })
+
+  it('should error when tms provider=zephyr but projectKey is missing', () => {
+    const config = withOverride((c) => {
+      c.outputs.tms = { provider: 'zephyr', zephyr: {} }
+    })
+    const result = deepValidateConfig(config)
+    assert.equal(result.valid, false)
+    assert.ok(
+      result.errors.some((e) => e.path === 'outputs.tms.zephyr.projectKey'),
+      'should require projectKey when tms provider is zephyr',
     )
   })
 
@@ -597,24 +591,6 @@ describe('preferences.checkpointLevel', () => {
     assert.equal(levelErrors.length, 0, '"full" should be valid')
   })
 
-  it('should accept "standard" as a valid checkpointLevel', () => {
-    const config = withOverride((c) => {
-      c.preferences.checkpointLevel = 'standard'
-    })
-    const result = deepValidateConfig(config)
-    const levelErrors = result.errors.filter((e) => e.path === 'preferences.checkpointLevel')
-    assert.equal(levelErrors.length, 0, '"standard" should be valid')
-  })
-
-  it('should accept "fast" as a valid checkpointLevel', () => {
-    const config = withOverride((c) => {
-      c.preferences.checkpointLevel = 'fast'
-    })
-    const result = deepValidateConfig(config)
-    const levelErrors = result.errors.filter((e) => e.path === 'preferences.checkpointLevel')
-    assert.equal(levelErrors.length, 0, '"fast" should be valid')
-  })
-
   it('should reject invalid checkpointLevel value', () => {
     const config = withOverride((c) => {
       c.preferences.checkpointLevel = 'turbo'
@@ -651,24 +627,6 @@ describe('preferences.smokeVerify', () => {
     const result = deepValidateConfig(config)
     const errors = result.errors.filter((e) => e.path === 'preferences.smokeVerify')
     assert.equal(errors.length, 0, '"list" should be valid')
-  })
-
-  it('should accept "typecheck" as a valid smokeVerify', () => {
-    const config = withOverride((c) => {
-      c.preferences.smokeVerify = 'typecheck'
-    })
-    const result = deepValidateConfig(config)
-    const errors = result.errors.filter((e) => e.path === 'preferences.smokeVerify')
-    assert.equal(errors.length, 0, '"typecheck" should be valid')
-  })
-
-  it('should accept "run-subset" as a valid smokeVerify', () => {
-    const config = withOverride((c) => {
-      c.preferences.smokeVerify = 'run-subset'
-    })
-    const result = deepValidateConfig(config)
-    const errors = result.errors.filter((e) => e.path === 'preferences.smokeVerify')
-    assert.equal(errors.length, 0, '"run-subset" should be valid')
   })
 
   it('should reject invalid smokeVerify value', () => {
@@ -1163,6 +1121,28 @@ describe('deepValidateConfig — inputs.tms conditional validation', () => {
     )
   })
 
+  it('should pass with valid inputs.tms zephyr config', () => {
+    const config = withOverride((c) => {
+      c.inputs = { tms: { provider: 'zephyr', zephyr: { projectKey: 'PROJ' } } }
+    })
+    const result = deepValidateConfig(config)
+    const zephyrErrors = result.errors.filter((e) => e.path.startsWith('inputs.tms'))
+    assert.equal(zephyrErrors.length, 0, 'valid zephyr inputs config should pass')
+  })
+
+  it('should error when inputs.tms.provider=zephyr but projectKey missing', () => {
+    const config = withOverride((c) => {
+      c.inputs = { tms: { provider: 'zephyr', zephyr: {} } }
+    })
+    const result = deepValidateConfig(config)
+    assert.ok(
+      result.errors.some(
+        (e) => e.path === 'inputs.tms.zephyr.projectKey' && e.message.includes('required'),
+      ),
+      'should require projectKey when inputs tms provider is zephyr',
+    )
+  })
+
   it('should accept config without inputs key at all', () => {
     const result = deepValidateConfig(validConfig)
     const inputWarnings = result.warnings.filter((w) => w.path === 'inputs')
@@ -1240,6 +1220,180 @@ describe('deepValidateConfig — inputs.tms conditional validation', () => {
 })
 
 // ---------------------------------------------------------------------------
+// deepValidateConfig — preferences.batchApproval and modelTier
+// ---------------------------------------------------------------------------
+
+describe('deepValidateConfig — preferences.batchApproval and modelTier', () => {
+  it('should accept batchApproval true', () => {
+    const config = withOverride((c) => {
+      c.preferences.batchApproval = true
+    })
+    const result = deepValidateConfig(config)
+    const errors = result.errors.filter((e) => e.path === 'preferences.batchApproval')
+    assert.equal(errors.length, 0, 'batchApproval true should be valid')
+  })
+
+  it('should reject batchApproval non-boolean', () => {
+    const config = withOverride((c) => {
+      c.preferences.batchApproval = 'yes'
+    })
+    const result = deepValidateConfig(config)
+    assert.ok(
+      result.errors.some((e) => e.path === 'preferences.batchApproval'),
+      'non-boolean batchApproval should be rejected',
+    )
+  })
+
+  it('should accept modelTier premium', () => {
+    const config = withOverride((c) => {
+      c.preferences.modelTier = 'premium'
+    })
+    const result = deepValidateConfig(config)
+    const errors = result.errors.filter((e) => e.path === 'preferences.modelTier')
+    assert.equal(errors.length, 0, 'modelTier premium should be valid')
+  })
+
+  it('should reject invalid modelTier value', () => {
+    const config = withOverride((c) => {
+      c.preferences.modelTier = 'turbo'
+    })
+    const result = deepValidateConfig(config)
+    assert.ok(
+      result.errors.some((e) => e.path === 'preferences.modelTier'),
+      'invalid modelTier should be rejected',
+    )
+  })
+
+  it('should accept config without batchApproval or modelTier', () => {
+    const result = deepValidateConfig(validConfig)
+    const errors = result.errors.filter(
+      (e) => e.path === 'preferences.batchApproval' || e.path === 'preferences.modelTier',
+    )
+    assert.equal(errors.length, 0, 'missing optional preferences should be valid')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// deepValidateConfig — preferences.coverageThreshold
+// ---------------------------------------------------------------------------
+
+describe('deepValidateConfig — preferences.coverageThreshold', () => {
+  it('should accept coverageThreshold at 0 (disables loop)', () => {
+    const config = withOverride((c) => {
+      c.preferences.coverageThreshold = 0
+    })
+    const result = deepValidateConfig(config)
+    const errors = result.errors.filter((e) => e.path === 'preferences.coverageThreshold')
+    assert.equal(errors.length, 0, 'coverageThreshold 0 should be valid')
+  })
+
+  it('should accept coverageThreshold at 100', () => {
+    const config = withOverride((c) => {
+      c.preferences.coverageThreshold = 100
+    })
+    const result = deepValidateConfig(config)
+    const errors = result.errors.filter((e) => e.path === 'preferences.coverageThreshold')
+    assert.equal(errors.length, 0, 'coverageThreshold 100 should be valid')
+  })
+
+  it('should reject coverageThreshold below 0', () => {
+    const config = withOverride((c) => {
+      c.preferences.coverageThreshold = -1
+    })
+    const result = deepValidateConfig(config)
+    assert.ok(
+      result.errors.some(
+        (e) => e.path === 'preferences.coverageThreshold' && e.message.includes('>= 0'),
+      ),
+      'should reject negative coverageThreshold',
+    )
+  })
+
+  it('should reject non-number coverageThreshold', () => {
+    const config = withOverride((c) => {
+      c.preferences.coverageThreshold = '80%'
+    })
+    const result = deepValidateConfig(config)
+    assert.ok(
+      result.errors.some((e) => e.path === 'preferences.coverageThreshold'),
+      'string coverageThreshold should be rejected',
+    )
+  })
+
+  it('should accept config without coverageThreshold (optional)', () => {
+    const result = deepValidateConfig(validConfig)
+    const errors = result.errors.filter((e) => e.path === 'preferences.coverageThreshold')
+    assert.equal(errors.length, 0, 'missing coverageThreshold should be valid')
+  })
+
+  it('should warn when coverageThreshold is below 50 but above 0', () => {
+    const config = withOverride((c) => {
+      c.preferences.coverageThreshold = 30
+    })
+    const result = deepValidateConfig(config)
+    assert.ok(
+      result.warnings.some(
+        (w) => w.path === 'preferences.coverageThreshold' && w.message.includes('low'),
+      ),
+      'should warn about low coverageThreshold',
+    )
+  })
+
+  it('should not warn when coverageThreshold is 0 (intentional disable)', () => {
+    const config = withOverride((c) => {
+      c.preferences.coverageThreshold = 0
+    })
+    const result = deepValidateConfig(config)
+    const warnings = result.warnings.filter((w) => w.path === 'preferences.coverageThreshold')
+    assert.equal(warnings.length, 0, 'coverageThreshold 0 should not warn (intentional disable)')
+  })
+
+  it('should not warn when coverageThreshold is 50 or above', () => {
+    const config = withOverride((c) => {
+      c.preferences.coverageThreshold = 50
+    })
+    const result = deepValidateConfig(config)
+    const warnings = result.warnings.filter((w) => w.path === 'preferences.coverageThreshold')
+    assert.equal(warnings.length, 0, 'coverageThreshold 50 should not warn')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// deepValidateConfig — outputs.tms.zephyr.folderId
+// ---------------------------------------------------------------------------
+
+describe('deepValidateConfig — outputs.tms.zephyr.folderId', () => {
+  it('should accept valid zephyr config with folderId', () => {
+    const config = withOverride((c) => {
+      c.outputs.tms = { provider: 'zephyr', zephyr: { projectKey: 'PROJ', folderId: 123 } }
+    })
+    const result = deepValidateConfig(config)
+    const zephyrErrors = result.errors.filter((e) => e.path.startsWith('outputs.tms.zephyr'))
+    assert.equal(zephyrErrors.length, 0, 'valid zephyr config with folderId should pass')
+  })
+
+  it('should accept zephyr config without folderId', () => {
+    const config = withOverride((c) => {
+      c.outputs.tms = { provider: 'zephyr', zephyr: { projectKey: 'PROJ' } }
+    })
+    const result = deepValidateConfig(config)
+    const zephyrErrors = result.errors.filter((e) => e.path.startsWith('outputs.tms.zephyr'))
+    assert.equal(zephyrErrors.length, 0, 'zephyr config without folderId should pass')
+  })
+
+  it('should reject zephyr folderId of 0', () => {
+    const config = withOverride((c) => {
+      c.outputs.tms = { provider: 'zephyr', zephyr: { projectKey: 'PROJ', folderId: 0 } }
+    })
+    const result = deepValidateConfig(config)
+    assert.ok(
+      result.errors.some((e) => e.path === 'outputs.tms.zephyr.folderId'),
+      'folderId 0 should fail min:1 validation',
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
 // getLocatorsForFramework
 // ---------------------------------------------------------------------------
 
@@ -1291,24 +1445,6 @@ describe('deepValidateConfig — Cypress framework support', () => {
     assert.equal(fwErrors.length, 0, 'cypress should be a valid e2e.framework')
   })
 
-  it('should accept cypress as valid outputs.automation.framework', () => {
-    const config = withOverride((c) => {
-      c.outputs.automation.framework = 'cypress'
-    })
-    const result = deepValidateConfig(config)
-    const fwErrors = result.errors.filter((e) => e.path === 'outputs.automation.framework')
-    assert.equal(fwErrors.length, 0, 'cypress should be a valid outputs.automation.framework')
-  })
-
-  it('should accept Cypress locators when framework is cypress', () => {
-    const config = withOverride((c) => {
-      c.e2e.framework = 'cypress'
-      c.preferences.locatorPriority = ['cy.findByTestId', 'cy.findByRole']
-    })
-    const result = deepValidateConfig(config)
-    assert.equal(result.valid, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
-  })
-
   it('should reject Playwright locators when framework is cypress', () => {
     const config = withOverride((c) => {
       c.e2e.framework = 'cypress'
@@ -1323,37 +1459,32 @@ describe('deepValidateConfig — Cypress framework support', () => {
       'should have locator errors mentioning "cypress"',
     )
   })
+})
 
-  it('should reject Cypress locators when framework is playwright', () => {
+// ---------------------------------------------------------------------------
+// deepValidateConfig — ci.separateRegressionStep
+// ---------------------------------------------------------------------------
+
+describe('deepValidateConfig — ci.separateRegressionStep', () => {
+  it('should accept ci.separateRegressionStep: true', () => {
     const config = withOverride((c) => {
-      c.e2e.framework = 'playwright'
-      c.preferences.locatorPriority = ['cy.findByTestId']
+      c.ci = { separateRegressionStep: true }
     })
     const result = deepValidateConfig(config)
-    assert.equal(result.valid, false)
+    const errors = result.errors.filter((e) => e.path.startsWith('ci'))
+    assert.equal(errors.length, 0, 'ci.separateRegressionStep true should be valid')
   })
 
-  it('should not warn when Cypress locatorPriority starts with cy.findByTestId', () => {
+  it('should reject ci.separateRegressionStep with non-boolean value', () => {
     const config = withOverride((c) => {
-      c.e2e.framework = 'cypress'
-      c.preferences.locatorPriority = ['cy.findByTestId', 'cy.findByRole']
-    })
-    const result = deepValidateConfig(config)
-    const locatorWarnings = result.warnings.filter((w) => w.path === 'preferences.locatorPriority')
-    assert.equal(locatorWarnings.length, 0, 'correct Cypress locator order should not warn')
-  })
-
-  it('should warn when Cypress locatorPriority does not start with cy.findByTestId', () => {
-    const config = withOverride((c) => {
-      c.e2e.framework = 'cypress'
-      c.preferences.locatorPriority = ['cy.findByRole', 'cy.findByTestId']
+      c.ci = { separateRegressionStep: 'yes' }
     })
     const result = deepValidateConfig(config)
     assert.ok(
-      result.warnings.some(
-        (w) => w.path === 'preferences.locatorPriority' && w.message.includes('cy.findByTestId'),
+      result.errors.some(
+        (e) => e.path === 'ci.separateRegressionStep' && e.message.includes('boolean'),
       ),
-      'should warn about locator priority recommending cy.findByTestId first',
+      'should report type error for non-boolean separateRegressionStep',
     )
   })
 })

@@ -1,6 +1,6 @@
 // bin/lib/config.mjs — Config generation + migration
 
-import { writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { MAX_MIGRATION_ITERATIONS, VERSION } from './constants.mjs'
 import { toForwardSlash } from './files.mjs'
@@ -65,6 +65,26 @@ export function migrateConfig(config) {
 }
 
 /**
+ * Build the viewports config object from gathered values.
+ */
+function buildViewportsConfig(gathered) {
+  return {
+    enabled: gathered.viewportsEnabled ?? false,
+    presets: gathered.viewportPresets ?? [],
+    custom: [],
+  }
+}
+
+/**
+ * Build the locator priority list based on framework.
+ */
+function buildLocatorPriority(framework) {
+  return framework === 'cypress'
+    ? ['cy.findByTestId', 'cy.findByRole', 'cy.findByLabelText', 'cy.findByText']
+    : ['getByTestId', 'getByRole', 'getByLabel', 'getByText']
+}
+
+/**
  * Build the outputs.tms config object from gathered values.
  */
 function buildTmsConfig(gathered) {
@@ -77,6 +97,12 @@ function buildTmsConfig(gathered) {
   }
   if (gathered.tmsProvider === 'qase') {
     tms.qase = { projectCode: gathered.qaseProjectCode ?? null }
+  }
+  if (gathered.tmsProvider === 'zephyr') {
+    tms.zephyr = {
+      projectKey: gathered.zephyrProjectKey ?? null,
+      folderId: gathered.zephyrFolderId ?? null,
+    }
   }
   if (gathered.tmsProvider === 'local') {
     tms.local = {
@@ -146,15 +172,14 @@ export function generateConfig(targetDir, gathered, e2eConfig, techStack) {
     },
     preferences: {
       interactiveMode: true,
-      locatorPriority:
-        e2eConfig.framework === 'cypress'
-          ? ['cy.findByTestId', 'cy.findByRole', 'cy.findByLabelText', 'cy.findByText']
-          : ['getByTestId', 'getByRole', 'getByLabel', 'getByText'],
+      locatorPriority: buildLocatorPriority(e2eConfig.framework),
       testMultiplier: 5,
       checkpointLevel: 'full',
       maxClarifications: 2,
       modelTier: gathered.modelTier || 'premium',
+      batchApproval: gathered.batchApproval ?? false,
     },
+    viewports: buildViewportsConfig(gathered),
   }
 
   dryRun(
@@ -178,4 +203,106 @@ export function generateConfig(targetDir, gathered, e2eConfig, techStack) {
   }
 
   return config
+}
+
+// ---------------------------------------------------------------------------
+// Workspace Config Resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Deep-merge two plain objects. Target (workspace) wins on key conflicts.
+ * Arrays are replaced (not concatenated). `workspaces` key is always omitted
+ * from the result — it is root-only.
+ *
+ * @param {object} base - Root config object
+ * @param {object} override - Workspace override object (wins on conflicts)
+ * @returns {object} Merged config without `workspaces`
+ */
+function deepMerge(base, override) {
+  const result = {}
+
+  const allKeys = new Set([...Object.keys(base), ...Object.keys(override)])
+  for (const key of allKeys) {
+    if (key === 'workspaces') continue // workspaces is root-only — never merge down
+
+    const baseVal = base[key]
+    const overrideVal = override[key]
+
+    if (overrideVal === undefined) {
+      result[key] = baseVal
+    } else if (baseVal === undefined) {
+      result[key] = overrideVal
+    } else if (
+      overrideVal !== null &&
+      typeof overrideVal === 'object' &&
+      !Array.isArray(overrideVal) &&
+      baseVal !== null &&
+      typeof baseVal === 'object' &&
+      !Array.isArray(baseVal)
+    ) {
+      result[key] = deepMerge(baseVal, overrideVal)
+    } else {
+      result[key] = overrideVal
+    }
+  }
+
+  return result
+}
+
+/**
+ * Adjust root config `paths` to point into the workspace directory when no
+ * workspace-level config file exists. Sets `project.sourceRoot` to
+ * `{workspacePath}/src` (unless root already scoped it there) and leaves
+ * other paths alone so callers can override as needed.
+ *
+ * @param {object} config - Root config (not mutated)
+ * @param {string} workspacePath - Relative path from repo root (e.g., "packages/web")
+ * @returns {object} Adjusted config
+ */
+function adjustPathsForWorkspace(config, workspacePath) {
+  const adjusted = deepMerge(config, {})
+
+  // Only adjust sourceRoot when it is still the generic default ('src')
+  const currentSourceRoot = config.project?.sourceRoot ?? 'src'
+  if (currentSourceRoot === 'src') {
+    adjusted.project = {
+      ...(adjusted.project ?? {}),
+      sourceRoot: `${workspacePath}/src`,
+    }
+  }
+
+  return adjusted
+}
+
+/**
+ * Resolve the effective config for a given workspace path.
+ *
+ * Resolution order:
+ * 1. If `{workspacePath}/sparq.config.json` exists, deep-merge root config
+ *    with workspace override (workspace wins on conflicts).
+ * 2. Otherwise return root config with `paths.sourceRoot` adjusted to the
+ *    workspace directory (when still at the generic 'src' default).
+ *
+ * The `workspaces` array is always stripped from the result — it is a
+ * root-only concern and sub-configs must not inherit it.
+ *
+ * @param {object} rootConfig - Parsed root sparq.config.json
+ * @param {string} workspacePath - Relative path to the workspace from repo root (e.g., "packages/web")
+ * @returns {object} Effective config for the workspace
+ */
+export function resolveWorkspaceConfig(rootConfig, workspacePath) {
+  const wsConfigPath = join(workspacePath, 'sparq.config.json')
+
+  if (existsSync(wsConfigPath)) {
+    let wsConfig = {}
+    try {
+      wsConfig = JSON.parse(readFileSync(wsConfigPath, 'utf-8'))
+    } catch {
+      warn(`Could not parse workspace config at ${wsConfigPath} — using root config`)
+      return adjustPathsForWorkspace(rootConfig, workspacePath)
+    }
+    return deepMerge(rootConfig, wsConfig)
+  }
+
+  return adjustPathsForWorkspace(rootConfig, workspacePath)
 }

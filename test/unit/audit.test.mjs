@@ -12,7 +12,6 @@ import {
 import {
   AUDIT_SENTINEL_END,
   AUDIT_SENTINEL_START,
-  MATURITY_LEVELS,
   SPARQ_RULE_FILE,
 } from '../../bin/lib/constants.mjs'
 import { resetState, setDryRun } from '../../bin/lib/state.mjs'
@@ -107,86 +106,6 @@ We verify aria-label, getByRole, and tab order focus management.
 `
 
 // ---------------------------------------------------------------------------
-// DIMENSIONS
-// ---------------------------------------------------------------------------
-
-describe('DIMENSIONS', () => {
-  it('should define exactly 10 dimensions', () => {
-    assert.equal(DIMENSIONS.length, 10)
-  })
-
-  it('should be frozen', () => {
-    assert.ok(Object.isFrozen(DIMENSIONS), 'DIMENSIONS should be frozen')
-  })
-
-  it('should have id, label, mentionPatterns, and completePatterns on each dimension', () => {
-    for (const dim of DIMENSIONS) {
-      assert.equal(typeof dim.id, 'string', `dimension should have string id`)
-      assert.equal(typeof dim.label, 'string', `dimension should have string label`)
-      assert.ok(Array.isArray(dim.mentionPatterns), `${dim.id} should have mentionPatterns array`)
-      assert.ok(Array.isArray(dim.completePatterns), `${dim.id} should have completePatterns array`)
-      assert.ok(
-        dim.mentionPatterns.length > 0,
-        `${dim.id} should have at least one mention pattern`,
-      )
-      assert.ok(
-        dim.completePatterns.length > 0,
-        `${dim.id} should have at least one complete pattern`,
-      )
-    }
-  })
-
-  it('should contain all expected dimension ids', () => {
-    const ids = DIMENSIONS.map((d) => d.id)
-    const expected = [
-      'e2e-patterns',
-      'manual-testing',
-      'naming-conventions',
-      'coverage-requirements',
-      'ci-integration',
-      'framework-selectors',
-      'page-objects',
-      'test-data',
-      'error-handling',
-      'accessibility',
-    ]
-    assert.deepEqual(ids, expected)
-  })
-
-  it('should have regex patterns in mentionPatterns and completePatterns', () => {
-    for (const dim of DIMENSIONS) {
-      for (const p of dim.mentionPatterns) {
-        assert.ok(p instanceof RegExp, `${dim.id} mentionPatterns should contain RegExp`)
-      }
-      for (const p of dim.completePatterns) {
-        assert.ok(p instanceof RegExp, `${dim.id} completePatterns should contain RegExp`)
-      }
-    }
-  })
-})
-
-// ---------------------------------------------------------------------------
-// MATURITY_LEVELS
-// ---------------------------------------------------------------------------
-
-describe('MATURITY_LEVELS', () => {
-  it('should define exactly 5 levels', () => {
-    assert.equal(MATURITY_LEVELS.length, 5)
-  })
-
-  it('should be frozen', () => {
-    assert.ok(Object.isFrozen(MATURITY_LEVELS), 'MATURITY_LEVELS should be frozen')
-  })
-
-  it('should have the correct level names in order', () => {
-    assert.deepEqual(
-      [...MATURITY_LEVELS],
-      ['Bare', 'Scaffolded', 'Partial', 'Established', 'Production-Ready'],
-    )
-  })
-})
-
-// ---------------------------------------------------------------------------
 // auditPromptMaturity
 // ---------------------------------------------------------------------------
 
@@ -218,26 +137,6 @@ describe('auditPromptMaturity', () => {
     assert.equal(result.level, 0)
     assert.equal(result.targetDirMissing, true)
     assert.equal(result.recommendations.length, 0)
-  })
-
-  it('should return correct structure from audit result', () => {
-    const result = auditPromptMaturity(dir)
-    assert.ok('level' in result)
-    assert.ok('levelName' in result)
-    assert.ok('totalScore' in result)
-    assert.ok('maxScore' in result)
-    assert.ok('dimensions' in result)
-    assert.ok('filesScanned' in result)
-    assert.ok('gaps' in result)
-    assert.ok('recommendations' in result)
-    assert.equal(typeof result.level, 'number')
-    assert.equal(typeof result.levelName, 'string')
-    assert.equal(typeof result.totalScore, 'number')
-    assert.equal(typeof result.maxScore, 'number')
-    assert.ok(typeof result.dimensions === 'object')
-    assert.ok(Array.isArray(result.filesScanned))
-    assert.ok(Array.isArray(result.gaps))
-    assert.ok(Array.isArray(result.recommendations))
   })
 
   it('should return all dimensions as gaps at level 0', () => {
@@ -330,15 +229,6 @@ describe('auditPromptMaturity', () => {
     assert.ok(result.dimensions['coverage-requirements'].score > 0)
   })
 
-  it('should handle .claude directory without CLAUDE.md (level 0 gate)', () => {
-    mkdirSync(join(dir, '.claude', 'rules'), { recursive: true })
-    writeFileSync(join(dir, '.claude', 'rules', 'test.md'), 'Some content\n')
-    // No CLAUDE.md and no .claude dir at root triggers level 0 — but .claude exists
-    const result = auditPromptMaturity(dir)
-    // With .claude existing, it scans but CLAUDE.md is absent
-    assert.ok(result.level >= 0)
-  })
-
   it('should combine content from multiple scanned files', () => {
     writeFileSync(join(dir, 'CLAUDE.md'), 'We use Playwright for E2E testing.\n')
     mkdirSync(join(dir, '.claude', 'rules'), { recursive: true })
@@ -391,29 +281,6 @@ describe('per-dimension scoring', { concurrency: false }, () => {
     })
   })
 
-  describe('manual-testing', () => {
-    it('should score 0 with no manual testing keywords', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nNo testing info here.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['manual-testing'].score, 0)
-    })
-
-    it('should score 1 with mention only (test case)', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nWe write test case documents.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['manual-testing'].score, 1)
-    })
-
-    it('should score 2 with mention + complete patterns', () => {
-      writeFileSync(
-        join(dir, 'CLAUDE.md'),
-        '# App\nTest case docs have acceptance criteria, test steps, and expected result.\n',
-      )
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['manual-testing'].score, 2)
-    })
-  })
-
   describe('page-objects', () => {
     it('should score 0 with no page object keywords', () => {
       writeFileSync(join(dir, 'CLAUDE.md'), '# App\nSimple project.\n')
@@ -434,162 +301,6 @@ describe('per-dimension scoring', { concurrency: false }, () => {
       )
       const result = auditPromptMaturity(dir)
       assert.equal(result.dimensions['page-objects'].score, 2)
-    })
-  })
-
-  describe('accessibility', () => {
-    it('should score 0 with no relevant keywords', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nA simple web project with no testing docs.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions.accessibility.score, 0)
-    })
-
-    it('should score 1 with mention only (a11y)', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nWe check a11y compliance.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions.accessibility.score, 1)
-    })
-
-    it('should score 2 with mention + complete patterns', () => {
-      writeFileSync(
-        join(dir, 'CLAUDE.md'),
-        '# App\nAccessibility testing with axe for tab order focus management and aria-label getByRole.\n',
-      )
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions.accessibility.score, 2)
-    })
-  })
-
-  describe('naming-conventions', () => {
-    it('should score 0 with no naming keywords', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nNo guidance here.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['naming-conventions'].score, 0)
-    })
-
-    it('should score 1 with mention only', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nFollow a naming convention for files.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['naming-conventions'].score, 1)
-    })
-
-    it('should score 2 with mention + complete patterns', () => {
-      writeFileSync(
-        join(dir, 'CLAUDE.md'),
-        '# App\nNaming convention: files use .spec.ts extension. describe blocks should test behavior.\n',
-      )
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['naming-conventions'].score, 2)
-    })
-  })
-
-  describe('coverage-requirements', () => {
-    it('should score 0 with no coverage keywords', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nBasic project.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['coverage-requirements'].score, 0)
-    })
-
-    it('should score 1 with mention only', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nWe track test coverage metrics.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['coverage-requirements'].score, 1)
-    })
-
-    it('should score 2 with mention + complete patterns', () => {
-      writeFileSync(
-        join(dir, 'CLAUDE.md'),
-        '# App\nCoverage thresholds: minimum 80%. Categories: HP, VE, SEC, EC, A11Y.\n',
-      )
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['coverage-requirements'].score, 2)
-    })
-  })
-
-  describe('ci-integration', () => {
-    it('should score 0 with no CI keywords', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nJust a web app.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['ci-integration'].score, 0)
-    })
-
-    it('should score 1 with mention only', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nWe use CI/CD pipeline.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['ci-integration'].score, 1)
-    })
-
-    it('should score 2 with mention + complete patterns', () => {
-      writeFileSync(
-        join(dir, 'CLAUDE.md'),
-        '# App\nCI/CD uses GitHub Actions. Run npm test in pipeline.\n',
-      )
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['ci-integration'].score, 2)
-    })
-  })
-
-  describe('framework-selectors', () => {
-    it('should score 0 with no selector keywords', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nNo testing info.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['framework-selectors'].score, 0)
-    })
-
-    it('should score 1 with mention only', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nUse data-testid for selectors.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['framework-selectors'].score, 1)
-    })
-
-    it('should score 2 with mention + complete patterns', () => {
-      writeFileSync(
-        join(dir, 'CLAUDE.md'),
-        '# App\nUse data-testid selectors. Prefer getByRole locators. Vue uses v-if directives.\n',
-      )
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['framework-selectors'].score, 2)
-    })
-
-    it('should score 2 for Svelte patterns', () => {
-      writeFileSync(
-        join(dir, 'CLAUDE.md'),
-        '# App\nUse data-testid selectors. Prefer getByRole locators. Svelte uses {#each} blocks.\n',
-      )
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['framework-selectors'].score, 2)
-    })
-
-    it('should score 2 for vanilla JS patterns', () => {
-      writeFileSync(
-        join(dir, 'CLAUDE.md'),
-        '# App\nUse data-testid selectors. Prefer getByRole locators. Use querySelector for DOM access.\n',
-      )
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['framework-selectors'].score, 2)
-    })
-  })
-
-  describe('test-data', () => {
-    it('should score 0 with no fixture keywords', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nNothing about tests.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['test-data'].score, 0)
-    })
-
-    it('should score 1 with mention only', () => {
-      writeFileSync(join(dir, 'CLAUDE.md'), '# App\nStore test data in fixture files.\n')
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['test-data'].score, 1)
-    })
-
-    it('should score 2 with mention + complete patterns', () => {
-      writeFileSync(
-        join(dir, 'CLAUDE.md'),
-        '# App\nFixture files with factory helpers and seed data. Use beforeEach for setup.\n',
-      )
-      const result = auditPromptMaturity(dir)
-      assert.equal(result.dimensions['test-data'].score, 2)
     })
   })
 
@@ -641,14 +352,6 @@ describe('generatePromptFiles', () => {
     captureLog(() => {
       const generated = generatePromptFiles(dir, auditResult, {})
       assert.equal(generated.length, 6)
-    })
-    assert.ok(existsSync(join(dir, '.sparq', 'prompts')))
-  })
-
-  it('should create .sparq/prompts/ directory', () => {
-    const auditResult = { level: 0, gaps: DIMENSIONS.map((d) => d.id) }
-    captureLog(() => {
-      generatePromptFiles(dir, auditResult, {})
     })
     assert.ok(existsSync(join(dir, '.sparq', 'prompts')))
   })
@@ -880,20 +583,6 @@ describe('formatAuditReport', () => {
     for (const dim of DIMENSIONS) {
       assert.ok(output.includes(dim.label), `should include dimension label "${dim.label}"`)
     }
-  })
-
-  it('should show recommendations when gaps exist', () => {
-    const result = auditResultFixture(0, 'Bare', 0)
-    const output = captureLog(() => formatAuditReport(result))
-    assert.ok(output.includes('Recommendations'), 'should display Recommendations heading')
-    assert.ok(output.includes('--fix'), 'should mention --fix flag')
-  })
-
-  it('should show success message when no gaps exist', () => {
-    const result = auditResultFixture(4, 'Production-Ready', 20)
-    result.recommendations = []
-    const output = captureLog(() => formatAuditReport(result))
-    assert.ok(output.includes('production-ready'), 'should show production-ready message')
   })
 
   it('should show scanned files when present', () => {

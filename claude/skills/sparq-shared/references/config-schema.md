@@ -31,12 +31,14 @@ External data sources for requirements gathering. Each source has an `enabled` f
 Configuration for reading test cases from external TMS providers via MCP (S2 TMS read).
 
 <inputs>
-- `inputs.tms.provider` (string|null, default `null`): `"testrail"` | `"qase"` | `null`
+- `inputs.tms.provider` (string|null, default `null`): `"testrail"` | `"qase"` | `"zephyr"` | `null`
 - `inputs.tms.testrail.projectId` (number|null): TestRail project ID (required when provider is "testrail")
 - `inputs.tms.testrail.suiteId` (number|null): TestRail suite ID (required when provider is "testrail")
 - `inputs.tms.testrail.sectionId` (number|null): Optional — filter to specific section
 - `inputs.tms.qase.projectCode` (string|null): Qase project code (required when provider is "qase")
 - `inputs.tms.qase.suiteId` (number|null): Optional — filter to specific suite
+- `inputs.tms.zephyr.projectKey` (string|null): Zephyr Scale project key (required when provider is "zephyr")
+- `inputs.tms.zephyr.folderId` (number|null): Optional — filter to specific folder
 </inputs>
 
 **Fallback**: If `inputs.tms` is not set, agents check `outputs.tms` for matching provider/credentials. This avoids config duplication when input and output TMS are the same.
@@ -53,8 +55,11 @@ Auto-detected by `/sparq:init` or on first run. Describes the existing E2E test 
 - `e2e.structure.steps` (string, default `"e2e/steps"`): Step definitions directory
 - `e2e.structure.fixtures` (string, default `"e2e/fixtures"`): Test fixtures directory
 - `e2e.structure.specs` (string, default `"e2e/specs"`): Test spec files directory
+- `e2e.configFile` (string|null): Path to E2E config file (e.g., `"playwright.config.ts"`). Auto-detected.
 - `e2e.baseClass` (string): Path to AbstractPage (e.g., `"e2e/pages/abstract.page.ts"`)
+- `e2e.hasAbstractPage` (boolean): Whether an abstract page base class was detected
 - `e2e.fixtureIndex` (string): Path to fixtures index (e.g., `"e2e/fixtures/index.ts"`)
+- `e2e.hasFixtureIndex` (boolean): Whether a fixture index barrel file was detected
 
 When `e2e.framework: 'cypress'`, default structure:
 - pages: `cypress/support/pages`
@@ -75,10 +80,12 @@ Configuration for generated artifacts.
 
 ### TMS (Test Management System)
 
-- `outputs.tms.provider` (string|null, default `null`): `"testrail"` | `"qase"` | `"local"` | `null`
+- `outputs.tms.provider` (string|null, default `null`): `"testrail"` | `"qase"` | `"zephyr"` | `"local"` | `null`
 - `outputs.tms.testrail.projectId` (number|null): TestRail project ID (required when provider is "testrail")
 - `outputs.tms.testrail.suiteId` (number|null): TestRail suite ID (required when provider is "testrail")
 - `outputs.tms.qase.projectCode` (string|null): Qase project code (required when provider is "qase")
+- `outputs.tms.zephyr.projectKey` (string|null): Zephyr Scale project key (required when provider is "zephyr"). Must match `ZEPHYR_PROJECT_KEY` env var. E.g., `"PROJ"`
+- `outputs.tms.zephyr.folderId` (number|null): Optional — filter export to specific Zephyr folder
 - `outputs.tms.local.outputDir` (string, default `".sparq/tms-export"`): local export directory
 - `outputs.tms.local.format` (string, default `"json"`): `"json"` | `"markdown"`
 - `outputs.jira.enabled` (boolean, default `false`): Enable Jira export via `mcp__atlassian__jira_*`. When enabled, coverage comments and `qa-covered` labels are always added to source tickets.
@@ -91,6 +98,24 @@ Configuration for generated artifacts.
 **Note**: E2E test code is written directly to the project test directory per `e2e.structure.*` paths. The `.sparq/` directory holds metadata artifacts only (requirements, test cases, coverage, validation, tracking, plans).
 
 **Note**: The export skill reads output settings from `outputs.tms`, `outputs.jira`, and `outputs.confluence`. Jira/Confluence source settings (`sources.jira`, `sources.confluence`) are used for requirements gathering only; export uses the `outputs` section.
+
+## Monorepo / Workspace Support
+
+Configuration for monorepo setups (Nx, Turborepo, npm workspaces). Declare each package that has its own E2E setup in a root-level `workspaces` array. Use `--workspace {path}` or `--all-workspaces` CLI flags to scope commands to a package.
+
+<workspaces>
+- `workspaces` (array, optional): List of workspace package entries. Each entry:
+  - `path` (string, **required**): Relative path from the repo root to the workspace package (e.g., `"packages/web"`). Must be a relative path — no leading `/` or `..` traversal.
+  - `name` (string, optional): Human-readable display name shown in CLI output headers (e.g., `"Web App"`). Defaults to `path` when omitted.
+
+**Merge semantics**: When a workspace directory contains its own `sparq.config.json`, it is deep-merged with the root config. Workspace values win on key conflicts. The `workspaces` array itself is root-only and is never inherited by workspace-level configs. When no workspace config file exists, the root config is used with `project.sourceRoot` adjusted to `{workspacePath}/src` (only when the root `sourceRoot` is still the default `"src"`).
+
+**CLI flags** (scoped per command):
+- `sparq lint --workspace packages/web` — lint a single workspace
+- `sparq lint --all-workspaces` — lint all declared workspaces, aggregate results
+- `sparq doctor --workspace packages/web` — check a single workspace install
+- `sparq init --workspace packages/web` — create workspace-specific config only (skips global agent/skill install)
+</workspaces>
 
 ## Refresh (S5)
 
@@ -135,8 +160,25 @@ User preferences for interactive behavior and test generation.
   - `"premium"`: opus + sonnet (default) — strongest reasoning and structured generation
   - `"balanced"`: all sonnet — good quality at lower cost
   - `"economy"`: all haiku — lowest cost, best for simple/well-constrained workflows
+- `preferences.batchApproval` (boolean, optional, default `false`): Plan-once, run-mostly-uninterrupted mode
+  - When `false` (default): standard checkpoint behaviour controlled by `checkpointLevel`
+  - When `true`: orchestrator presents an enhanced Phase 0 plan showing ALL phases (test count estimates by category, source breakdown, agent assignments, expected artifacts) → single user approval gate → subsequent P1/P2 checkpoints auto-approved (logged as "batch-approval-mode")
+  - Interrupted automatically if: any agent returns `status: "failed"`, delivered artifact count is <75% of estimated, token budget exceeds 120K, critical codebase readiness issue, or unresolvable blocking question
+  - Phase 3 final approval is always presented regardless of this setting
+  - Contrast with `checkpointLevel: fast` which silently skips ALL approvals including critical gaps. `batchApproval` is the recommended middle ground for team CI pipelines
+- `preferences.coverageThreshold` (number, optional, default `80`, range `0-100`): Minimum requirement coverage % to accept after Phase 2. When coverage is below this threshold, the orchestrator runs a coverage iteration loop (up to 3 rounds) to fill gaps before proceeding to Phase 3. Set to `0` to disable the coverage loop entirely. Applies to S1, S1+S2, S3 (feature mode) only. S3 bug mode excluded. Full protocol: `coverage-iteration.md`
 - Note: `preferences.locatorPriority` maps to Cypress commands per `cypress-patterns.md` when `e2e.framework` is `"cypress"`
 </preferences>
+
+## Viewports
+
+Configuration for responsive viewport testing. When enabled, the automation-engineer wraps generated E2E tests in `test.each(VIEWPORTS)` using the data-driven pattern from `data-driven-patterns.md`. Test count multiplies by the number of active viewports.
+
+<viewports>
+- `viewports.enabled` (boolean, default `false`): Enable viewport matrix testing. When `false`, desktop-only tests are generated (no change from baseline behavior).
+- `viewports.presets` (string[], optional): Named presets to include. Valid values: `"desktop"`, `"laptop"`, `"tablet"`, `"mobile"`, `"mobile-lg"`. Resolved to `{ width, height }` per `viewport-patterns.md` presets table.
+- `viewports.custom` (object[], optional): Additional viewport definitions. Each entry: `{ name: string, width: number, height: number }`. Custom entries are merged after presets; name collisions favor custom.
+</viewports>
 
 ## Example Configuration
 
@@ -182,8 +224,19 @@ User preferences for interactive behavior and test generation.
     "maxClarifications": 2,
     "checkpointLevel": "full",
     "smokeVerify": "list",
-    "modelTier": "premium"
+    "modelTier": "premium",
+    "batchApproval": false,
+    "coverageThreshold": 80
   },
-  "refresh": { "autoApplyLowSeverity": false, "preserveDeprecated": true }
+  "refresh": { "autoApplyLowSeverity": false, "preserveDeprecated": true },
+  "viewports": {
+    "enabled": true,
+    "presets": ["desktop", "mobile"],
+    "custom": []
+  },
+  "workspaces": [
+    { "path": "packages/web", "name": "Web App" },
+    { "path": "packages/admin" }
+  ]
 }
 ```

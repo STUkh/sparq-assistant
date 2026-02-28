@@ -29,6 +29,7 @@ Read only when `sources.figma.enabled: true`:
 
 Read only when 3+ sources enabled for parallel fetch:
 - `.claude/skills/sparq-shared/references/parallel-execution.md` -- parallel source fetching patterns (Pattern 1)
+
 </references>
 
 <mcp_response_budget>
@@ -258,4 +259,5 @@ Before handing off: if `.sparq/requirements/REQ-{feature}.md` exists, copy to `.
 - artifacts: [`.sparq/requirements/REQ-{feature}.md`, `.sparq/refresh/REQ-{feature}-previous.md`]
 - gaps: [unavailable sources, missing previous version, ambiguous requirements]
 - instructions: "Requirements fetched for diff analysis. Compare current requirements against existing test coverage via test registry."
+
 </handoff>

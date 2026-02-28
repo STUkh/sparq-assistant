@@ -33,6 +33,9 @@ Read only when `e2e.framework: 'cypress'`:
 Read only when dispatched for S5 (traceability extraction):
 - `.claude/skills/sparq-shared/references/refresh-patterns.md` -- traceability lookup chain, registry schema, refresh diff format
 
+Read only when validating >= 10 test files:
+- `.claude/skills/sparq-shared/references/context-anchoring.md` -- mid-task re-anchoring protocol
+
 Read only when parallel validation mode (>10 test files):
 - `.claude/skills/sparq-shared/references/parallel-execution.md` -- parallel check dispatch (Pattern 3)
 </references>
@@ -64,6 +67,14 @@ Each Task agent receives:
 
 **Sequential fallback**: Use when ≤10 test files or only 1-2 check categories are relevant.
 </parallel_validation>
+
+<context_anchoring>
+Per `context-anchoring.md`. When validating >= 10 test files:
+1. **Category re-anchor**: After completing each check category (1/6 through 6/6), re-read `validation-checklist.md` severity definitions
+2. **Calibration re-anchor**: After 10th finding, re-read severity examples to recalibrate Critical vs Warning vs Info
+3. **Drift self-check**: Verify last 3 VF IDs sequential, severities justified, auto-fix proposals present for deterministic fixes
+4. **Signal**: `[sparq]   Re-anchor: recalibrated severity after {N} findings`
+</context_anchoring>
 
 ## Phase 1 Workflow (S4)
 
@@ -118,6 +129,8 @@ When dispatched with `mode: "refactor"` by the orchestrator:
 - **Source code** (recommended): `src/` paths for selector/route validation
 
 ## Phase 2 Workflow (S4)
+
+After Phase 1 inventory is reported back and the orchestrator re-dispatches for validation:
 
 ## Validation Checks
 
@@ -232,6 +245,7 @@ Per `progress-protocol.md` milestone catalog (sparq-test-validator section). Emi
 - Handoff emitted with all required fields present and valid per handoff-schema.md
 - MCP degradation handled: unavailable sources in `gaps[]`, fallback signals emitted, `status` reflects level
 - If refactor mode: all approved occurrences replaced, smoke verify run, refactor-report.md written, filesWritten in handoff
+- If dispatch included `Expected output: {N}`, report.counts must match. Shortfall → status "partial", remaining in gaps[]
 </done_criteria>
 
 ## Handoff
@@ -240,7 +254,7 @@ All handoffs follow `handoff-schema.md`. Scenario-specific fields:
 
 **S4 -> orchestrator** (P1):
 - status: success | partial (checks skipped) | failed
-- counts: {filesValidated, critical, warning, info, autoFixable}
+- counts: {filesValidated, findings, critical, warning, info, autoFixable}
 - artifacts: [`.sparq/validation/validation-report.md`]
 - filesWritten: [list of project files created/modified for git rollback tracking]
 - gaps: [skipped check categories, unavailable MCP sources]
@@ -262,7 +276,7 @@ All handoffs follow `handoff-schema.md`. Scenario-specific fields:
 
 **Refactor -> orchestrator** (P1):
 - status: success | partial (smoke failed)
-- counts: {occurrencesFound, filesAffected, selectorChanges, importChanges, classChanges, urlChanges, textChanges, nearMatches}
+- counts: {findings, filesAffected, selectorChanges, importChanges, classChanges, urlChanges, textChanges, nearMatches}
 - artifacts: [`.sparq/validation/refactor-report.md`]
 - filesWritten: [list of all modified project files]
 - gaps: [near-matches requiring manual review, smoke failures]
@@ -279,7 +293,6 @@ All handoffs follow `handoff-schema.md`. Scenario-specific fields:
 </budget_aware_reading>
 
 ## Recommended Validation Triggers
-
 - After sprint code changes -> changed modules only
 - Before release -> full test suite
 - After route changes -> flow validation only

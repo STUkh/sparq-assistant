@@ -14,7 +14,7 @@
       "properties": {
         "scenario": {
           "type": "string",
-          "enum": ["S1", "S2", "S3", "S4", "S5"]
+          "enum": ["S1", "S1+S2", "S2", "S3", "S4", "S5", "S6"]
         },
         "feature": {
           "type": "string"
@@ -60,7 +60,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "enum": ["P0.5", "P1", "P2", "P3"]
+            "enum": ["P0", "P0.5", "P1", "P1.5", "P2", "P3"]
           },
           "name": {
             "type": "string"
@@ -121,7 +121,7 @@
           },
           "source": {
             "type": "string",
-            "enum": ["SRC-J", "SRC-C", "SRC-F", "SRC-L"]
+            "enum": ["SRC-J", "SRC-C", "SRC-F", "SRC-L", "SRC-D"]
           },
           "priority": {
             "type": "string",
@@ -218,7 +218,7 @@
     },
     "checkpointLevel": {
       "type": "string",
-      "enum": ["full", "standard", "minimal"],
+      "enum": ["full", "standard", "fast"],
       "description": "Active checkpoint level when plan was created"
     },
     "resumeState": {

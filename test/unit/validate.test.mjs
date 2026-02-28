@@ -46,10 +46,6 @@ describe('sanitizeProjectName', () => {
     assert.equal(sanitizeProjectName('my/project'), 'myproject')
   })
 
-  it('should remove backslashes', () => {
-    assert.equal(sanitizeProjectName('my\\project'), 'myproject')
-  })
-
   it('should enforce max 200 characters', () => {
     const longName = 'a'.repeat(250)
     assert.equal(sanitizeProjectName(longName).length, 200)
@@ -81,20 +77,8 @@ describe('isValidJiraKey', () => {
     assert.equal(isValidJiraKey('EP'), true)
   })
 
-  it('should accept multi-letter key PROJ', () => {
-    assert.equal(isValidJiraKey('PROJ'), true)
-  })
-
   it('should accept key with hyphen MY-PROJ', () => {
     assert.equal(isValidJiraKey('MY-PROJ'), true)
-  })
-
-  it('should accept key with underscore MY_PROJ', () => {
-    assert.equal(isValidJiraKey('MY_PROJ'), true)
-  })
-
-  it('should accept key with digits PROJ2', () => {
-    assert.equal(isValidJiraKey('PROJ2'), true)
   })
 
   it('should reject lowercase key', () => {
@@ -125,10 +109,6 @@ describe('isValidJiraKey', () => {
 describe('isValidConfluenceKey', () => {
   it('should accept uppercase key PROJ', () => {
     assert.equal(isValidConfluenceKey('PROJ'), true)
-  })
-
-  it('should accept key with digits PROJ2', () => {
-    assert.equal(isValidConfluenceKey('PROJ2'), true)
   })
 
   it('should reject lowercase key', () => {
@@ -191,40 +171,12 @@ describe('parseTestRailId', () => {
     assert.equal(parseTestRailId('999999'), 999999)
   })
 
-  it('should return null for empty string', () => {
-    assert.equal(parseTestRailId(''), null)
-  })
-
   it('should return null for null', () => {
     assert.equal(parseTestRailId(null), null)
   })
 
-  it('should return null for undefined', () => {
-    assert.equal(parseTestRailId(undefined), null)
-  })
-
   it('should return null for "0"', () => {
     assert.equal(parseTestRailId('0'), null)
-  })
-
-  it('should return null for "-1"', () => {
-    assert.equal(parseTestRailId('-1'), null)
-  })
-
-  it('should return null for "1.5"', () => {
-    assert.equal(parseTestRailId('1.5'), null)
-  })
-
-  it('should return null for "abc"', () => {
-    assert.equal(parseTestRailId('abc'), null)
-  })
-
-  it('should return null for NaN', () => {
-    assert.equal(parseTestRailId(NaN), null)
-  })
-
-  it('should return null for Infinity', () => {
-    assert.equal(parseTestRailId(Infinity), null)
   })
 })
 

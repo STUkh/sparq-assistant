@@ -1,10 +1,18 @@
 # Codebase Readiness Assessment
 
-Assessment protocol for E2E test generation codebase sufficiency. Referenced by: orchestrator (Phase 0.5), automation-engineer (S3 Step 1).
+Assessment protocol for E2E test generation codebase sufficiency. Referenced by: orchestrator (Phase 0.5 — all E2E scenarios: S2/S3/S5/S1+S2), automation-engineer (S2 Step 0.5, S3 Step 1).
 
-## Enforcement Model
+<mandatory_gate>
 
-Runs in AGENT REASONING, not CLI code. Orchestrator and automation-engineer assess during discovery/analysis phases. Eval rubrics verify readiness signals in output.
+BEFORE dispatching any E2E code generation agent (S2, S3, S5, S6, S1+S2):
+1. Complete the Phase 0.5 lightweight scan (5 steps below)
+2. Emit `[sparq] P0.5 Codebase readiness: {level}` — always, even when OK
+3. If CRITICAL or BLOCKING: STOP. Present user choices A/B/C/D. Do NOT dispatch until resolved.
+4. Append readiness level + signal names to E2E Infrastructure Summary before Phase 1
+
+This gate runs in agent reasoning. Skipping it when context is compressed or scenarios appear straightforward is a protocol violation.
+
+</mandatory_gate>
 
 <readiness_signals>
 
@@ -46,9 +54,9 @@ Codebase readiness: {CRITICAL|BLOCKING|WARNING|OK}
   {If not OK: signal names and descriptions}
 ```
 
-### Automation Engineer Step 1 (S3) -- Detailed Check
+### Automation Engineer Detailed Check (S2 Step 0.5, S3 Step 1)
 
-After reading requirements, before code generation:
+Applies to S2 (Conversion Workflow) and S3 (From-Scratch). Run before generating any code:
 
 1. For each requirement's referenced pages/screens, search `{sourceRoot}/` for matching components
 2. For each UI element in requirements, search for matching `data-testid` or semantic locator

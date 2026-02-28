@@ -1,6 +1,6 @@
 ---
 name: sparq:generate-e2e
-description: "Generate automated E2E tests from scratch for a feature (Playwright or Cypress per config). Combines requirements analysis with automated test generation. Use when: (1) creating E2E tests for a new feature, (2) generating E2E tests from Jira ticket, (3) building automation suite from requirements."
+description: "Generate automated E2E tests from scratch for a feature or bug ticket (Playwright or Cypress per config). Combines requirements analysis with automated test generation. Use when: (1) creating E2E tests for a new feature, (2) generating E2E tests from Jira ticket, (3) building automation suite from requirements, (4) creating a regression test from a bug ticket — orchestrator auto-detects and applies REG- IDs + inline-append behavior."
 audience: qa
 ---
 
@@ -10,6 +10,8 @@ Config, version check, pattern rules, and E2E code generation preamble per `clau
 
 ## Workflow
 
+> **Before generation starts**: SparQ will scan your codebase for components, routes, and test IDs to assess if it has enough structure for E2E tests. If your codebase is new or incomplete, you will be offered options (placeholder selectors, manual-only fallback, or defer) before any code is generated.
+
 1. Run `/sparq:analyze` with provided input (Jira ID, URL, or description). Reuse existing `.sparq/requirements/REQ-{feature}.md` if present.
 2. **CHECKPOINT** -- Present test strategy: automatable tests (list), manual-only tests, priority order, dependencies (auth/data/mocks), estimated effort (specs, page objects, helpers), reusable vs new infrastructure. **Wait for approval.**
 
@@ -18,10 +20,19 @@ Config, version check, pattern rules, and E2E code generation preamble per `clau
 3. Scan E2E directories (from `e2e.structure.*` in config) for page objects, fixtures, helpers, auth patterns, test data strategies, framework config. Reuse everything possible; extend existing page objects rather than duplicating.
 4. **CHECKPOINT** -- Delegate to `sparq-automation-engineer` agent with full config context: `project.componentFileExtensions`, `e2e`, `project.sourceRoot`, `project.routeDiscoveryPattern`, `preferences.locatorPriority`. For >30 tests: split into parallel batches per `parallel-execution.md` Pattern 2. For parallel batching (>30 tests), TC IDs are pre-assigned per `parallel-execution.md` Pattern 2 to prevent ID collisions. For S3 with manual companion: launch automation-engineer + manual-test-writer as dual-agent per Pattern 4. Generate E2E test code matching configured framework. Present for review. **Wait for approval.**
 5. Optionally: run tests with the configured framework's CLI, debug with Playwright MCP browser (when `e2e.framework` is `playwright`). Files are already in the project E2E directory.
+6. **Optional lint check**: After smoke verify passes, offer `sparq lint {e2e-directory}/` to validate generated files against 8 deterministic code-quality rubrics (locator quality, flaky patterns, assertion coverage, naming conventions). Instant, CI-compatible, zero model inference.
 
 **Chain**: requirements-analyst -> automation-engineer
 
 **Optional support**: For features with complex manual-only test cases, `sparq-manual-test-writer` agent can generate companion manual test documentation alongside the automated suite.
+
+## Bug Ticket Input
+
+When a bug ticket is provided instead of a feature ticket, the orchestrator activates S3 bug mode:
+- The orchestrator appends a single `test.describe` block with `REG-{ticket}-{NNN}` in the title to the closest matching existing feature spec
+- No separate regression folder is created — the regression test lives inline in the feature spec
+- Existing page objects are reused and extended with new methods as needed
+- See `test-generation-patterns.md` "Bug Ticket Input Mode (S3)" for full conventions
 
 ## Browser Verification (Playwright MCP)
 

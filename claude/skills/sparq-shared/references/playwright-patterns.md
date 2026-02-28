@@ -167,6 +167,26 @@ import { LoginPage, MFAPage } from '../pages'                // Barrel imports f
 import { expect, test } from '../../fixtures'                // Specs: ALWAYS from fixtures
 ```
 
+## Data-Driven Tests (`test.each()`)
+
+Use `test.each()` when VE-category tests share the same flow but differ only in input data. Trigger: 3+ validation scenarios for the same field or flow.
+
+```typescript
+test.each([
+  { input: '',             error: 'Email is required',    label: 'empty' },
+  { input: 'not-an-email', error: 'Invalid email format', label: 'invalid-format' },
+  { input: 'a'.repeat(255) + '@t.co', error: 'Email too long', label: 'max-length-exceeded' },
+])('TC-login-VE-001-$label: Email validation — $label', async ({ page, input, error }) => {
+  const loginPage = new LoginPage(page)
+  await loginPage.goto()
+  await loginPage.emailInput.fill(input)
+  await loginPage.submitButton.click()
+  await expect(loginPage.emailError).toHaveText(error)
+})
+```
+
+TC ID convention: base `TC-{feature}-VE-{NNN}` + kebab-case label suffix (e.g., `TC-login-VE-001-empty`). For 6+ variants or shared datasets, extract to `fixtures/test-data/{feature}.ts` and import from the fixture barrel. Full patterns, Cypress equivalent, and `TestStep.testData` usage: `data-driven-patterns.md`.
+
 ## Smoke Verify Commands
 
 - **List**: `npx playwright test --list`

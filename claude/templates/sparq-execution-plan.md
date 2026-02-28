@@ -4,7 +4,7 @@ See also: `claude/templates/sparq-execution-plan.json` for the machine-readable 
 
 ## Request
 - **Input:** {user input}
-- **Scenario:** {1: Manual | 2: Conversion | 3: Auto Gen | 4: Validation}
+- **Scenario:** {S1: Manual | S1+S2: Unified | S2: Conversion | S3: Auto Gen (feature / bug ticket) | S4: Validation | S5: Sync | S6: Publish Results}
 - **Created:** {timestamp}
 - **Updated:** {timestamp}
 
@@ -16,9 +16,11 @@ See also: `claude/templates/sparq-execution-plan.json` for the machine-readable 
 
 ## Phases
 - **P0 Classification**: {status} | orchestrator | {start}->{end}
+- **P0.5 Discovery**: {status} | orchestrator | {start}->{end}
 - **P1 Requirements**: {status} | requirements-analyst | {start}->{end}
+- **P1.5 Diff Analysis**: {status, S5 only} | orchestrator | {start}->{end}
 - **P2 Generation**: {status} | {agent} | {start}->{end}
-- **P3 Export**: {status} | orchestrator | {start}->{end}
+- **P3 Verification & Export**: {status} | orchestrator | {start}->{end}
 
 ## Parallel Execution
 - **Mode**: {sequential | parallel | degraded-sequential}
@@ -76,7 +78,7 @@ See also: `claude/templates/sparq-execution-plan.json` for the machine-readable 
 
 ## Completion
 - **Status:** {In Progress | Complete | Aborted}
-- **Scenario:** {1-5}
+- **Scenario:** {S1-S6}
 - **Agents:** {count}
 - **Artifacts:** {count}
 - **Checkpoints Passed:** {count}

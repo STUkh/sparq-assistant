@@ -1,0 +1,14 @@
+name: "Orchestrator classification: S3 bug mode"
+scenario: classification
+input:
+  type: text
+  identifier: "Write regression test for bug BUG-42 form crash"
+expected_outputs:
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S3"'
+      - has_pattern: '"inputType"\s*:\s*"bug"'
+rubrics:
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance

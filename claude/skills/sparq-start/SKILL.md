@@ -42,9 +42,14 @@ Ask only the minimum follow-up questions the target skill needs (if any), then h
 ```
 Choose a lane (pick a number, or just describe what you need)
 
-  1. Generate lane (new tests): manual, E2E, or unified
-  2. Maintain lane (existing tests/results): validate, sync, regression, refactor, export
-  3. View or edit SparQ configuration
+  1. Generate lane — create new tests (manual, E2E, or both)
+     e.g., "Generate tests for EP-142" or "Create E2E tests for login"
+
+  2. Maintain lane — update or validate existing tests
+     e.g., "My tests are broken" or "Requirements changed, update tests"
+
+  3. Configuration — view or change SparQ settings
+     e.g., "Enable Jira" or "Change checkpoint to fast"
 ```
 
 Wait for user selection or free-form response.
@@ -67,9 +72,10 @@ Pass user input to the selected skill.
 Ask: "What do you need to maintain?"
 - (A) Validate tests after UI changes → invoke `/sparq:validate`
 - (B) Sync tests after requirement changes → invoke `/sparq:sync`
-- (C) Create a regression test for a bug → invoke `/sparq:regression`
+- (C) Create a regression test for a bug → invoke `/sparq:generate-e2e` (orchestrator auto-detects bug ticket)
 - (D) Refactor test code after codebase changes → invoke `/sparq:refactor`
-- (E) Export results to TMS/Jira/Confluence → invoke `/sparq:export`
+- (E) Export test cases to TMS/Jira/Confluence → invoke `/sparq:export`
+- (F) Post test execution results to TMS → invoke `/sparq:publish-results`
 
 Follow-up prompts by action:
 - (A) Ask for test path (default: `e2e.structure.specs`)
@@ -77,6 +83,7 @@ Follow-up prompts by action:
 - (C) Ask for bug ticket ID or repro steps
 - (D) Ask for `--from` and `--to` rename patterns (e.g., old selector → new selector)
 - (E) Ask for export target(s) if user did not specify
+- (F) Ask for TMS provider (reads from config) and test output path if not auto-detected
 
 Pass gathered input to the selected maintain skill.
 
@@ -109,9 +116,6 @@ Detect intent from any user input (alongside `/sparq:start`, menu follow-up, or 
 - **File path ending in `.spec.ts` or `.test.ts`**: route to Maintain lane → Validate
 - **URL containing `confluence` or `figma`**: route to Generate lane (default unified)
 - **URL containing `jira` or `atlassian` with ticket path**: route to Generate lane (default unified)
-- **PR URL pattern** (GitHub/GitLab PR URL): route to Generate lane (default unified) with PR diff as input
-- **Branch name pattern** (`feature/`, `fix/`, `bugfix/` prefix): offer generation from diff
-
 #### Keyword-Based Detection (match any keyword in user input)
 
 **Generate lane (default unified — manual + E2E)**:
@@ -119,8 +123,6 @@ Detect intent from any user input (alongside `/sparq:start`, menu follow-up, or 
 - "test this ticket", "test this feature", "cover this feature", "cover this with tests"
 - "what tests do I need", "testing for", "tests for"
 - "I have a ticket", "from this ticket", "from requirements", "from this Jira"
-- "test my PR", "test this PR", "tests for this PR", "generate tests from PR"
-- "test my branch", "test these changes", "test my diff"
 
 **Generate lane — manual only**:
 - "manual tests", "manual test cases", "test cases only", "just test cases"
@@ -157,15 +159,14 @@ Detect intent from any user input (alongside `/sparq:start`, menu follow-up, or 
 - "send to jira", "coverage comment", "publish test plan"
 - "sync to tms", "upload tests"
 
+**Maintain lane — publish results**:
+- "publish results", "post results", "test run results"
+- "update testrail with results", "update qase with results", "sync results to tms"
+- "push test results", "ci results", "upload results"
+
 **Configuration (outside lanes)**:
 - "config", "configuration", "settings", "setup", "change project key"
 - "enable jira", "disable confluence", "change checkpoint"
-
-**Model tier optimization** (direct route — not in menu):
-- "tune", "model tier", "cheaper model", "reduce cost", "save money", "optimize costs"
-- "switch to sonnet", "switch to haiku", "use cheaper model", "lower cost"
-- "economy tier", "balanced tier", "premium tier"
-  → Invoke `/sparq:tune`
 
 **Best practices consulting** (direct route — not in menu):
 - "playwright best practices", "playwright patterns", "playwright auth", "playwright assertions"
@@ -195,8 +196,6 @@ Detect intent from any user input (alongside `/sparq:start`, menu follow-up, or 
 - "Convert our manual QA tests to Playwright?" → Generate lane (manual-to-E2E)
 - "The login page was redesigned, check our E2E suite" → Maintain lane (validate)
 - "BUG-451 keeps regressing, write a test for it" → Maintain lane (regression)
-- "Test my PR" → Generate lane (unified) with PR diff as input
-- "Generate tests for these changes" → Generate lane (unified), detect branch diff
 
 #### Ambiguity Resolution
 
@@ -215,7 +214,7 @@ When input matches multiple categories with similar confidence:
 4. User selection or detected intent mapped to correct SparQ skill
 5. Minimum necessary follow-up questions asked (default max 2 via `preferences.maxClarifications`) — never re-asked information the user already provided
 6. Target skill invoked with all user-provided context passed through
-7. Two-lane UX preserved: Generate lane (manual/e2e/unified) and Maintain lane (validate/sync/regression/refactor/export), plus config path
+7. Two-lane UX preserved: Generate lane (manual/e2e/unified) and Maintain lane (validate/sync/regression/refactor/export/publish-results), plus config path
 </done_criteria>
 
 ## Usage

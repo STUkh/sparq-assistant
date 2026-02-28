@@ -25,10 +25,37 @@ export const CI_PROVIDERS = {
  * @param {string} [options.testDir='e2e'] - E2E test directory
  * @param {string} [options.configFile='playwright.config.ts'] - Playwright config file
  * @param {number} [options.nodeVersion=22] - Node.js version for CI
+ * @param {boolean} [options.allure=false] - Include Allure report generation and upload step
+ * @param {boolean} [options.sarifUpload=false] - Add SARIF upload step for GitHub Code Scanning
+ * @param {boolean} [options.viewportMatrix=false] - Add viewport matrix dimension to strategy
+ * @param {boolean} [options.separateRegressionStep=false] - Add separate regression test step
  * @returns {string} YAML workflow content
  */
 export function buildGitHubWorkflow(options = {}) {
-  const { testDir = 'e2e', configFile = 'playwright.config.ts', nodeVersion = 22 } = options
+  const {
+    testDir = 'e2e',
+    configFile = 'playwright.config.ts',
+    nodeVersion = 22,
+    allure = false,
+    sarifUpload = false,
+    viewportMatrix = false,
+    separateRegressionStep = false,
+  } = options
+
+  // Pre-compute viewport-related YAML fragments.
+  // The GHA matrix reference (${{ matrix.viewport }}) must be built via concatenation
+  // to avoid JS template literal parse conflicts with the {{ }} syntax.
+  const ghaViewportRef = viewportMatrix ? '$' + '{{ matrix.viewport }}' : ''
+  const strategyBlock = viewportMatrix
+    ? `    strategy:
+      matrix:
+        viewport: [desktop, tablet, mobile]
+`
+    : ''
+  const viewportEnvBlock = viewportMatrix
+    ? `\n        env:\n          VIEWPORT: ${ghaViewportRef}`
+    : ''
+  const resultsNameSuffix = viewportMatrix ? `-${ghaViewportRef}` : ''
 
   // Using template literal for the YAML to keep it readable and maintainable.
   // Each line is carefully indented to produce valid GitHub Actions YAML.
@@ -44,7 +71,7 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    steps:
+${strategyBlock}    steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -57,14 +84,52 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E tests
+      - name: Run E2E tests${viewportEnvBlock}
         run: npx playwright test --config=${configFile}
 
+${
+  separateRegressionStep
+    ? `      - name: Run regression tests
+        if: always()
+        run: npx playwright test --grep "REG-" --config=${configFile}
+
+`
+    : ''
+}${
+  allure
+    ? `      - name: Generate Allure report
+        if: always()
+        run: npx allure generate allure-results -o allure-report --clean
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 14
+
+`
+    : ''
+}      - name: SparQ lint quality gate
+        if: always()
+        run: npx sparq lint --strict${sarifUpload ? ' --format sarif' : ''} "${testDir}"
+${
+  sarifUpload
+    ? `
+      - name: Upload SARIF results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: .sparq/lint-results.sarif
+`
+    : ''
+}
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results
+          name: playwright-results${resultsNameSuffix}
           path: ${testDir === 'e2e' ? 'test-results/' : `${testDir}/test-results/`}
           retention-days: 7
 
@@ -72,7 +137,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report${resultsNameSuffix}
           path: playwright-report/
           retention-days: 7
 `
@@ -86,7 +151,12 @@ jobs:
  * Build a GitLab CI YAML string for running Playwright E2E tests.
  */
 export function buildGitLabCi(options = {}) {
-  const { testDir = 'e2e', configFile = 'playwright.config.ts', nodeVersion = 22 } = options
+  const {
+    testDir = 'e2e',
+    configFile = 'playwright.config.ts',
+    nodeVersion = 22,
+    separateRegressionStep = false,
+  } = options
 
   return `stages:
   - test
@@ -99,7 +169,8 @@ e2e-tests:
     - npm ci
     - npx playwright install --with-deps chromium
   script:
-    - npx playwright test --config=${configFile}
+    - npx playwright test --config=${configFile}${separateRegressionStep ? `\n    - npx playwright test --grep "REG-" --config=${configFile}` : ''}
+    - npx sparq lint --strict ${testDir}
   artifacts:
     when: always
     paths:
@@ -121,7 +192,12 @@ e2e-tests:
  * Build an Azure Pipelines YAML string for running Playwright E2E tests.
  */
 export function buildAzurePipeline(options = {}) {
-  const { testDir = 'e2e', configFile = 'playwright.config.ts', nodeVersion = 22 } = options
+  const {
+    testDir = 'e2e',
+    configFile = 'playwright.config.ts',
+    nodeVersion = 22,
+    separateRegressionStep = false,
+  } = options
 
   return `trigger:
   branches:
@@ -151,6 +227,18 @@ steps:
 
   - script: npx playwright test --config=${configFile}
     displayName: 'Run E2E tests'
+${
+  separateRegressionStep
+    ? `
+  - script: npx playwright test --grep "REG-" --config=${configFile}
+    displayName: 'Run regression tests'
+    condition: always()
+`
+    : ''
+}
+  - script: npx sparq lint --strict ${testDir}
+    displayName: 'SparQ lint quality gate'
+    condition: always()
 
   - task: PublishTestResults@2
     condition: always()
@@ -193,8 +281,8 @@ function readSparqConfig(targetDir) {
     const config = JSON.parse(raw)
     const defaults = {}
 
-    if (config.project?.testDir || config.e2e?.testDir) {
-      defaults.testDir = config.project?.testDir || config.e2e?.testDir
+    if (config.project?.testDir) {
+      defaults.testDir = config.project.testDir
     }
     if (config.e2e?.configFile) {
       defaults.configFile = config.e2e.configFile
@@ -248,7 +336,11 @@ export function generateCiTemplate(targetDir, options = {}) {
   }
 
   // Build workflow content
-  const content = builder({ testDir, configFile })
+  const content = builder({
+    testDir,
+    configFile,
+    separateRegressionStep: options.separateRegressionStep,
+  })
 
   // Ensure parent directories exist (only for nested paths like .github/workflows/)
   const pathSegments = providerConfig.outputPath.split('/')

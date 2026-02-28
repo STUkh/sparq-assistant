@@ -1,6 +1,6 @@
 // bin/lib/commands/help.mjs — Help command
 
-import { VERSION } from '../constants.mjs'
+import { SPARQ_LOGO, VERSION } from '../constants.mjs'
 import { FEATURE_GROUPS, PRESET_FEATURES } from '../features.mjs'
 import { emoji, style } from '../state.mjs'
 
@@ -9,14 +9,7 @@ function renderSkillSections(options = {}) {
 
   const advancedSkills = `
   ${style.dim('Framework Development')}
-    ${style.cyan('/sparq:analyze')}           Gather requirements from sources
-    ${style.cyan('/sparq:eval')}              Run strict eval
-    ${style.cyan('/sparq:improve')}           Run bounded improve loop
-    ${style.cyan('/sparq:baseline-promote')}  Promote baseline after policy checks
-    ${style.cyan('/sparq:eval-reflect')} ${style.dim('[service]')}      Analyze eval results
-    ${style.cyan('/sparq:eval-tune')}    ${style.dim('[service]')}      Apply prompt engineering fixes
-    ${style.cyan('/sparq:optimize')}     ${style.dim('[service]')}      Optimize prompts for token budget
-    ${style.cyan('/sparq:audit-prompts')}     Assess prompt maturity in project`
+    ${style.cyan('/sparq:analyze')}           Gather and consolidate requirements from sources`
 
   return `
 ${style.bold(`${emoji.skills}SKILLS`)} ${style.dim('(use in Claude Code)')}
@@ -26,7 +19,6 @@ ${style.bold(`${emoji.skills}SKILLS`)} ${style.dim('(use in Claude Code)')}
     ${style.cyan('/sparq:start')}             Default entry — guided workflow router
     ${style.cyan('/sparq:init')}              Initialize SparQ in your project
     ${style.cyan('/sparq:config')}            View or edit configuration
-    ${style.cyan('/sparq:tune')}              Optimize prompts for cheaper model tiers
 
   ${style.dim('Generate')}
     ${style.cyan('/sparq:generate')}          Generate manual + E2E tests from requirements
@@ -37,7 +29,6 @@ ${style.bold(`${emoji.skills}SKILLS`)} ${style.dim('(use in Claude Code)')}
   ${style.dim('Maintain')}
     ${style.cyan('/sparq:validate')}          Check tests for UI drift
     ${style.cyan('/sparq:sync')}              Update tests after requirement changes
-    ${style.cyan('/sparq:regression')}        Create regression test for a bug
     ${style.cyan('/sparq:refactor')}          Refactor existing test code
     ${style.cyan('/sparq:export')}            Export to TestRail, Qase, or Jira
 
@@ -57,8 +48,8 @@ export function cmdHelp(options = {}) {
   const { advanced = false } = options
 
   console.log(`
-${style.boldCyan(`${emoji.help}SparQ QA Assistant`)} ${style.dim(`v${VERSION}`)}
-QA Assistant Framework for Claude Code
+${style.cyan(SPARQ_LOGO)} ${style.dim(`v${VERSION}`)}
+Multi-platform QA test automation framework
 
 ${style.bold('USAGE')}
   npx sparq-assistant ${style.cyan('<command>')} ${style.dim('[target-directory] [options]')}
@@ -71,17 +62,15 @@ ${style.bold('COMMANDS')}
   ${emoji.uninstall}${style.cyan('uninstall')}   Remove all SparQ files and configuration from a project
   ${emoji.clean}${style.cyan('clean')}       Remove stale artifacts from .sparq/ output directories
   ${emoji.doctor}${style.cyan('doctor')}      Verify installation — checks all files and configs
-  ${emoji.tune || emoji.config}${style.cyan('tune')}        Optimize agent prompts for a model tier
-              (premium, balanced, economy)
+  ${emoji.lint}${style.cyan('lint')}        Lint generated E2E test files — detect flaky patterns,
+              selector quality, and format compliance
+  ${emoji.coverage}${style.cyan('coverage')}    Compute requirement coverage from .sparq/ artifacts
   ${emoji.help}${style.cyan('help')}        Show this help message
 ${
   advanced
     ? `
 ${style.bold('FRAMEWORK DEVELOPMENT COMMANDS')}
-  ${emoji.audit}${style.cyan('audit')}       Assess prompt maturity — check testing architecture
-  ${emoji.eval}${style.cyan('eval')}        Run prompt evaluation cases — score agent outputs
-  ${emoji.improve}${style.cyan('improve')}     Auto-run bounded improvement loop for failing eval cases
-  ${emoji.baseline}${style.cyan('baseline')}    Promote eval baselines after strict pass streak policy`
+  ${emoji.audit}${style.cyan('audit')}       Assess prompt maturity — check testing architecture`
     : ''
 }
 
@@ -94,6 +83,8 @@ ${style.bold(`${emoji.config}OPTIONS`)}
   ${style.dim('--verbose')}             Show full stack traces and extra detail
   ${style.dim('--help, -h')}            Show this help message and exit
   ${style.dim('--version, -v')}         Show version number and exit
+  ${style.dim('--no-update-check')}     Disable the npm version check for this run
+  ${style.dim('--no-color')}            Disable colored output (also: NO_COLOR=1 env var)
 
   Run ${style.dim('sparq help <command>')} for command-specific options.
 
@@ -146,6 +137,8 @@ const COMMAND_HELP = {
       ['--features <list>', 'Comma-separated features to install'],
       ['--ci-provider <name>', 'Generate CI workflow template (github, gitlab, azure)'],
       ['--defaults', 'Show detected defaults, confirm once'],
+      ['--workspace <path>', 'Initialize a specific workspace in a monorepo'],
+      ['--all-workspaces', 'Initialize all declared workspaces'],
       ['--non-interactive', 'Skip prompts and use safe local-first defaults'],
       ['--dry-run', 'Preview changes without writing files'],
       ['--quiet, -q', 'Suppress info/ok output'],
@@ -155,6 +148,7 @@ const COMMAND_HELP = {
       'npx sparq-assistant init',
       'npx sparq-assistant init ./my-project',
       'npx sparq-assistant init --features=e2e,jira',
+      'npx sparq-assistant init --workspace packages/web',
       'npx sparq-assistant init --defaults --dry-run',
     ],
   },
@@ -219,6 +213,7 @@ const COMMAND_HELP = {
     options: [
       ['--deep', 'Run deep MCP health checks'],
       ['--fix', 'Auto-repair fixable issues'],
+      ['--workspace <path>', 'Check a specific workspace in a monorepo'],
       ['--quiet, -q', 'Suppress info/ok output'],
       ['--verbose', 'Show extra detail'],
     ],
@@ -226,50 +221,44 @@ const COMMAND_HELP = {
       'npx sparq-assistant doctor',
       'npx sparq-assistant doctor --deep',
       'npx sparq-assistant doctor --fix',
+      'npx sparq-assistant doctor --workspace packages/web',
     ],
   },
-  eval: {
-    description: 'Run prompt evaluation cases — score agent outputs against rubrics',
-    usage: 'npx sparq-assistant eval [case-name] [options]',
+  lint: {
+    description: 'Lint generated E2E test files — detect flaky patterns and selector quality',
+    usage: 'npx sparq-assistant lint [target-directory] [options]',
     options: [
-      ['--all', 'Run all eval cases'],
-      ['--model <name>', 'mock (default), haiku, sonnet, opus, local, or claude-* ID'],
-      ['--strict, --no-strict', 'Strict policy mode is default; disable only for exploration'],
-      ['--allow-skips', 'Allow skip-heavy/non-evaluated cases without failing strict policy'],
-      ['--yes', 'Skip execution confirmation prompt'],
-      ['--no-clean', 'Disable per-case workspace cleanup for batch/API runs'],
-      ['--artifact-root <dir>', 'Resolve artifacts under <project>/<dir>/<case-stem>'],
-      ['--audit', 'Run standalone prompt quality audit (line counts, required sections)'],
-      ['--trends', 'Show eval score history over time'],
-      ['--project <dir>', 'Project root for output resolution (default: cwd)'],
+      ['--strict', 'Exit non-zero if any critical issues found'],
+      ['--threshold <N>', 'Exit non-zero if average quality score is below N% (0-100)'],
+      ['--coverage-gate <N>', 'Exit non-zero if fewer than N% of files pass quality checks'],
+      ['--format <type>', 'Output format: human (default), json, or sarif'],
+      ['--workspace <path>', 'Lint a specific workspace in a monorepo'],
+      ['--all-workspaces', 'Lint all declared workspaces in sparq.config.json'],
+      ['--quiet, -q', 'Suppress info/ok output'],
     ],
     examples: [
-      'npx sparq-assistant eval s6-bug-regression',
-      'npx sparq-assistant eval s6-bug-regression --strict',
-      'npx sparq-assistant eval --all --strict',
-      'npx sparq-assistant eval --model haiku s6-bug-regression',
-      'npx sparq-assistant eval --model opus --yes --all',
-      'npx sparq-assistant eval --all --allow-skips',
-      'npx sparq-assistant eval --audit',
-      'npx sparq-assistant eval --trends',
+      'npx sparq-assistant lint',
+      'npx sparq-assistant lint ./e2e',
+      'npx sparq-assistant lint --strict',
+      'npx sparq-assistant lint --format sarif',
+      'npx sparq-assistant lint --threshold 80 --coverage-gate 90',
+      'npx sparq-assistant lint --all-workspaces --format json',
     ],
   },
-  improve: {
-    description: 'Run bounded strict improvement loop (reflect + tune + strict re-eval)',
-    usage: 'npx sparq-assistant improve [case-name] [options]',
+  coverage: {
+    description: 'Compute requirement coverage from .sparq/ artifacts',
+    usage: 'npx sparq-assistant coverage [target-directory] [options]',
     options: [
-      ['--all', 'Run improve loop for all eval cases'],
-      ['--model <name>', 'haiku, sonnet, opus, local, or claude-* ID (required for generation)'],
-      ['--strict, --no-strict', 'Strict policy mode is default'],
-      ['--allow-skips', 'Allow skip-heavy runs during exploratory improve'],
-      ['--max-iterations <N>', 'Maximum improve iterations (default: 3)'],
-      ['--project <dir>', 'Project root for output resolution (default: cwd)'],
-      ['--artifact-root <dir>', 'Resolve artifacts under <project>/<dir>/<case-stem>'],
+      ['--threshold <N>', 'Exit non-zero if coverage is below N% (0-100)'],
+      ['--format <type>', 'Output format: human (default) or json'],
+      ['--workspace <path>', 'Check coverage for a specific workspace'],
+      ['--quiet, -q', 'Suppress info/ok output'],
     ],
     examples: [
-      'npx sparq-assistant improve s6-bug-regression --model haiku',
-      'npx sparq-assistant improve s6-bug-regression --max-iterations=2 --model sonnet',
-      'npx sparq-assistant improve --all --model haiku',
+      'npx sparq-assistant coverage',
+      'npx sparq-assistant coverage --threshold 80',
+      'npx sparq-assistant coverage --format json',
+      'npx sparq-assistant coverage --workspace packages/web',
     ],
   },
   audit: {
@@ -277,6 +266,7 @@ const COMMAND_HELP = {
     usage: 'npx sparq-assistant audit [target-directory] [options]',
     options: [
       ['--fix', 'Generate supplementary prompts to fill detected gaps'],
+      ['--strict', 'Exit non-zero if maturity level is below 3 (for CI gating)'],
       ['--json', 'Output audit report in JSON format (for CI)'],
       ['--quiet, -q', 'Suppress info/ok output'],
       ['--verbose', 'Show detailed scoring breakdown'],
@@ -287,38 +277,6 @@ const COMMAND_HELP = {
       'npx sparq-assistant audit --fix',
       'npx sparq-assistant audit --json',
       'npx sparq-assistant audit ./my-project --fix --dry-run',
-    ],
-  },
-  tune: {
-    description: 'Optimize agent prompts for a model tier (premium, balanced, economy)',
-    usage: 'npx sparq-assistant tune <apply|revert|status> [options]',
-    options: [
-      ['apply <tier>', 'Apply Layer 1 enhancements for a model tier'],
-      ['revert', 'Restore all agents to premium defaults'],
-      ['status', 'Show current tier and agent status'],
-      ['--force', 'Skip confirmation prompts'],
-      ['--project <dir>', 'Target project directory (default: cwd)'],
-      ['--non-interactive', 'Skip prompts and use defaults'],
-      ['--dry-run', 'Preview changes without writing files'],
-    ],
-    examples: [
-      'npx sparq-assistant tune apply economy',
-      'npx sparq-assistant tune apply balanced',
-      'npx sparq-assistant tune revert',
-      'npx sparq-assistant tune status',
-    ],
-  },
-  baseline: {
-    description:
-      'Promote per-case baselines after policy check (2 consecutive clean strict passes required)',
-    usage: 'npx sparq-assistant baseline promote [case-name|--all] [options]',
-    options: [
-      ['--all', 'Promote every evaluated case from latest run if policy allows'],
-      ['--model <name>', 'Model key to use for streak lookup and baseline write'],
-    ],
-    examples: [
-      'npx sparq-assistant baseline promote s6-bug-regression',
-      'npx sparq-assistant baseline promote --all',
     ],
   },
 }
@@ -338,7 +296,7 @@ export function cmdHelpCommand(name) {
   const exLines = entry.examples.map((ex) => `  ${style.dim('$')} ${ex}`).join('\n')
 
   console.log(`
-${style.boldCyan(`${emoji.help}SparQ QA Assistant`)} ${style.dim(`v${VERSION}`)}
+${style.cyan(SPARQ_LOGO)} ${style.dim(`v${VERSION}`)}
 
 ${style.bold('COMMAND')}
   ${emoji[name] || ''}${style.cyan(name)} — ${entry.description}

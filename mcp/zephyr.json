@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "zephyr": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-zephyr-scale"],
+      "env": {
+        "ZEPHYR_API_TOKEN": "${ZEPHYR_API_TOKEN}",
+        "JIRA_PROJECT_KEY": "${ZEPHYR_PROJECT_KEY}"
+      }
+    }
+  }
+}

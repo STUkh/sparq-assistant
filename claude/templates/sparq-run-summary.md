@@ -66,8 +66,8 @@
 - Sync with latest requirements: `/sparq:sync {ticket-id}`
 <!-- After sync (S5): -->
 - Check for UI drift: `/sparq:validate {test-path}`
-<!-- After regression (S6): -->
-- Run regression test: `npx playwright test {spec-file} --grep @regression`
+<!-- After S3 bug mode: -->
+- Run regression tests: `npx playwright test --grep "REG-"`
 <!-- Always available: -->
 - Export results: `/sparq:export`
 - Start new workflow: `/sparq:start`

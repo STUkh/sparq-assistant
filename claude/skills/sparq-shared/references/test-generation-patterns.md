@@ -94,6 +94,19 @@ Optional beyond the core 5 (HP, VE, SEC, EC, A11Y). Generated only when explicit
 
 **P4 Low** (priority=4): Cosmetic/visual-only, rarely-used paths, tooltip/help text, browser-specific quirks, nice-to-have UX
 
+## Bug Ticket Input Mode (S3)
+
+When the orchestrator detects a bug ticket as input (repro steps + actual vs expected behavior), S3 activates bug mode:
+
+- **REG- ID format**: `REG-{ticket}-{NNN}` must appear in the `test.describe` title (e.g., `test.describe('REG-BUG-142-001: LoginForm silent failure on empty email', ...)`)
+- **Inline append**: orchestrator fuzzy-matches `affectedComponent` to an existing spec file — automation-engineer appends to that file
+- **Inline comment**: add a comment above the describe block: `// Regression: {TICKET-ID} — {bug title}`
+- **No `@regression` tag, no JSDoc block**
+- **Single `test.describe` per bug invocation**
+- **Reuse existing page objects** — extend with new methods as needed, never create duplicate POs
+- **Repro steps to test actions**: 1:1 mapping where possible — each repro step becomes a test action
+- **Filter regression tests**: `npx playwright test --grep "REG-"`
+
 ## Coverage Targets
 
 - P1 Critical: 100% automated

@@ -1,3 +1,10 @@
+---
+# Optional TMS tracking field — written automatically by /sparq:export after first export.
+# Format: tmsId: {provider}:{remoteId}  e.g. tmsId: testrail:5001 | tmsId: qase:301 | tmsId: zephyr:TC-PROJ-42
+# Do not set manually; leave absent before first export.
+# tmsId: ~
+---
+
 # Test Cases: {Feature Name}
 
 **Generated:** {timestamp} | **Source:** {Jira / Confluence / Figma / Manual}

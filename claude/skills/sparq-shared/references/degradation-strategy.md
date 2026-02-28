@@ -7,7 +7,8 @@ Single source of truth for fallback behaviors when MCP servers or external servi
 <resilience_layers>
 1. **Retry** (transient errors): exponential backoff per retry rules below
 2. **Fallback** (persistent errors): per-source fallback behavior below
-Apply in order: retry -> if exhausted, fallback.
+3. **Local Skill / Web Docs** (API-level fallback): when MCP and file export both inadequate, use direct REST API skills or live web documentation
+Apply in order: retry -> if exhausted, fallback -> if inadequate, local skill / web docs.
 </resilience_layers>
 
 ## Per-Source Fallback
@@ -16,8 +17,16 @@ Apply in order: retry -> if exhausted, fallback.
 - **Jira** (`mcp__atlassian__jira_*`): ask user for manual reqs (text input or file path), pause workflow
 - **Confluence** (`mcp__atlassian__confluence_*`): skip enrichment, note gap in output, continue
 - **Figma** (`mcp__figma__*`): grep `{sourceRoot}/**/*.{ext}` (per `project.componentFileExtensions`) for `data-testid`, labels, ARIA, continue
-- **TMS write** (`mcp__testrail__add_*`, `mcp__qase__create_*`): per provider — TestRail: generate XML at `.sparq/test-cases/TC-{feature}-manual.xml`; Qase: generate JSON at `.sparq/tms-export/TC-{feature}-qase.json`; Local: always succeeds
-- **TMS read** (`mcp__testrail__get_*`, `mcp__qase__list_*`/`get_*`): prompt user for file-based import (TestRail XML/CSV or Qase JSON). Pause workflow until user provides file.
+- **TMS write** (`mcp__testrail__add_*`, `mcp__qase__create_*`): per provider —
+  - Qase: (L1) MCP tools -> (L2) `/sparq:qase-api` local skill (direct REST via curl) -> (L3) WebSearch Qase developer docs if REST endpoints changed -> (L4) generate JSON at `.sparq/tms-export/TC-{feature}-qase.json`
+  - TestRail: (L1) MCP tools -> (L2) `/sparq:testrail-api` local skill (direct REST via curl) -> (L3) WebSearch TestRail docs if REST endpoints changed -> (L4) generate XML at `.sparq/test-cases/TC-{feature}-manual.xml`
+  - Zephyr: (L1) MCP tools -> (L2) direct REST `POST /rest/atm/1.0/testcase` (ZEPHYR_BASE_URL + ZEPHYR_API_TOKEN; see `zephyr-sync.md` for Cloud v2 path) -> (L3) WebSearch Zephyr Scale developer docs if REST endpoints changed -> (L4) generate JSON at `.sparq/tms-export/TC-{feature}-zephyr.json`
+  - Local: always succeeds
+- **TMS read** (`mcp__testrail__get_*`, `mcp__qase__list_*`/`get_*`): per provider —
+  - Qase: (L1) MCP tools -> (L2) `/sparq:qase-api` local skill -> (L3) prompt user for file-based import (Qase JSON)
+  - TestRail: (L1) MCP tools -> (L2) `/sparq:testrail-api` local skill -> (L3) prompt user for file-based import (TestRail XML/CSV)
+  - Zephyr: (L1) MCP tools -> (L2) direct REST `GET /rest/atm/1.0/testcase/search?query=projectKey="{projectKey}"` (Server; Cloud v2: `GET /testcases?projectKey=`; see `zephyr-sync.md`) -> (L3) prompt user for file-based import (Zephyr Scale JSON)
+  Pause workflow until user provides file (when file-based import is the final fallback).
 - **Playwright MCP** (`mcp__playwright__*`): skip browser verification, user runs `npx playwright test` manually, continue
 </source_fallbacks>
 
@@ -50,6 +59,7 @@ Per-request timeouts (agents track via retry count as proxy for elapsed time):
 - Figma: 30s per request (60s for large files with many frames)
 - TestRail: 15s per request (faster API, smaller payloads)
 - Qase: 15s per request (API-based TMS, similar payload size)
+- Zephyr Scale: 15s per request (REST-based TMS, similar payload size)
 - Playwright MCP: 30s per request (browser operations)
 
 Phase budgets:
@@ -109,15 +119,57 @@ MCP call fails
 <skill_fallbacks>
 - **sparq:analyze**: if primary source fails, prompt user for text; secondary sources degrade gracefully
 - **sparq:generate-manual**: requires `.sparq/requirements/REQ-{feature}.md`; if missing, run `/sparq:analyze` first; no MCP dependency in generation
-- **sparq:manual-to-e2e**: without Figma, use codebase selectors; without Playwright MCP, skip verification; without TMS MCP (when TMS read requested), prompt user for file export (TestRail XML/CSV or Qase JSON)
+- **sparq:manual-to-e2e**: without Figma, use codebase selectors; without Playwright MCP, skip verification; without TMS MCP (when TMS read requested): (1) try `/sparq:qase-api` for Qase or `/sparq:testrail-api` for TestRail, (2) prompt user for file export (TestRail XML/CSV or Qase JSON)
 - **sparq:generate-e2e**: combines analyze + manual-to-e2e fallbacks
 - **sparq:sync** (UI drift): codebase validation always works; MCP sources add enrichment only
 - **sparq:sync** (requirements): without test registry, falls back to coverage matrix then title matching (see `refresh-patterns.md`); without requirement source, same as sparq:analyze fallback; without Playwright MCP, skip smoke verification
 - **sparq:export**: per-target fallbacks:
-  - TMS: per provider — TestRail: generate XML at `.sparq/test-cases/TC-{feature}-manual.xml` for manual import; Qase: generate JSON at `.sparq/tms-export/TC-{feature}-qase.json`; Local: always succeeds
+  - TMS: per provider — TestRail: (1) try `/sparq:testrail-api` direct REST, (2) if fails, generate XML at `.sparq/test-cases/TC-{feature}-manual.xml` for manual import; Qase: (1) try `/sparq:qase-api` direct REST, (2) if fails, generate JSON at `.sparq/tms-export/TC-{feature}-qase.json`; Zephyr: (1) direct REST at `{ZEPHYR_BASE_URL}/rest/atm/1.0/testcase` (see `zephyr-sync.md` for Cloud v2 path), (2) if fails, generate JSON at `.sparq/tms-export/TC-{feature}-zephyr.json`; Local: always succeeds
   - Jira: write coverage summary to `.sparq/coverage/{feature}-jira-comment.md` for manual posting
   - Confluence: write markdown to `.sparq/test-cases/TC-{feature}-confluence.md` for manual page creation
 </skill_fallbacks>
+
+## Local Skill API Fallback (Layer 2)
+
+<local_skill_fallback>
+When MCP tools for a TMS provider fail and a corresponding local API skill exists, the fallback chain attempts direct REST API calls before falling back to file export.
+
+**Available local API skills**:
+- Qase: `/sparq:qase-api` — direct REST API v1 via curl/Bash. Requires `$QASE_API_TOKEN` env variable.
+- TestRail: `/sparq:testrail-api` — direct REST API v2 via curl/Bash. Requires `$TESTRAIL_BASE_URL`, `$TESTRAIL_USERNAME`, `$TESTRAIL_API_KEY` env variables.
+
+**Activation criteria**:
+- MCP tool call returned error (any category after retry exhaustion)
+- Local API skill exists for the provider
+- API credentials are set (`$QASE_API_TOKEN` for Qase; `$TESTRAIL_BASE_URL` + `$TESTRAIL_USERNAME` + `$TESTRAIL_API_KEY` for TestRail)
+
+**If local skill also fails**:
+- 404/422 errors: invoke Web Docs Fallback (search `developers.qase.io` for Qase or `support.testrail.com` for TestRail)
+- Auth errors (401/403): stop, report credential issue to user
+- Other errors: fall through to file export fallback (final layer)
+
+**Web Docs Fallback (Layer 3)**:
+When local skill REST calls return 404 or 422 suggesting endpoint changes:
+1. `WebSearch "qase api {endpoint-name} site:developers.qase.io"` (or `site:support.testrail.com` for TestRail)
+2. `WebFetch` the relevant docs page, extract updated path/method/body
+3. Retry the REST call with corrected endpoint
+4. Log: `[sparq] TMS Fallback: REST endpoint resolved from web docs`
+5. If web lookup also fails: fall through to file export
+
+Signal format: `[sparq] {phase} TMS fallback: MCP unavailable, using /sparq:{provider}-api direct REST`
+</local_skill_fallback>
+
+## Removal Safeguard Fallback
+
+<removal_safeguard>
+When a sync or export operation detects items for removal but cannot verify remote state (MCP unavailable):
+- Default action: SKIP all removals
+- Log: `[sparq] Warning: Cannot verify remote TMS state — skipping removals. Re-run when {Provider} is available to reconcile.`
+- Write reconciliation report to `.sparq/sync/pending-removals-{feature}.md` listing items that need reconciliation
+- On next successful MCP connection, remind user about pending reconciliation
+
+Removal actions are NEVER performed when remote state cannot be verified. This prevents accidental data loss during degraded operation.
+</removal_safeguard>
 
 ## Parallel Execution Degradation
 

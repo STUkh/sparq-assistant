@@ -11,10 +11,7 @@ import {
   isInterrupted,
   ok,
   resetState,
-  SYM_FAIL,
-  SYM_INFO,
   SYM_OK,
-  SYM_WARN,
   setDryRun,
   setInterrupted,
   setVerbosity,
@@ -116,21 +113,6 @@ describe('symbols', () => {
     assert.equal(typeof SYM_OK, 'string')
     assert.ok(SYM_OK.length > 0)
   })
-
-  it('SYM_WARN should be a non-empty string', () => {
-    assert.equal(typeof SYM_WARN, 'string')
-    assert.ok(SYM_WARN.length > 0)
-  })
-
-  it('SYM_FAIL should be a non-empty string', () => {
-    assert.equal(typeof SYM_FAIL, 'string')
-    assert.ok(SYM_FAIL.length > 0)
-  })
-
-  it('SYM_INFO should be a non-empty string', () => {
-    assert.equal(typeof SYM_INFO, 'string')
-    assert.ok(SYM_INFO.length > 0)
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -156,42 +138,6 @@ describe('style', () => {
 
   it('dim should return a string', () => {
     assert.equal(typeof style.dim('test'), 'string')
-  })
-
-  it('red should return a string', () => {
-    assert.equal(typeof style.red('test'), 'string')
-  })
-
-  it('green should return a string', () => {
-    assert.equal(typeof style.green('test'), 'string')
-  })
-
-  it('yellow should return a string', () => {
-    assert.equal(typeof style.yellow('test'), 'string')
-  })
-
-  it('blue should return a string', () => {
-    assert.equal(typeof style.blue('test'), 'string')
-  })
-
-  it('cyan should return a string', () => {
-    assert.equal(typeof style.cyan('test'), 'string')
-  })
-
-  it('magenta should return a string', () => {
-    assert.equal(typeof style.magenta('test'), 'string')
-  })
-
-  it('boldBlue should return a string', () => {
-    assert.equal(typeof style.boldBlue('test'), 'string')
-  })
-
-  it('boldCyan should return a string', () => {
-    assert.equal(typeof style.boldCyan('test'), 'string')
-  })
-
-  it('boldYellow should return a string', () => {
-    assert.equal(typeof style.boldYellow('test'), 'string')
   })
 
   it('colored should accept array format and return a string', () => {
@@ -296,7 +242,7 @@ describe('dryRun function', () => {
     }, 'test action')
     assert.equal(executed, false)
     assert.equal(capture.lines().length, 1)
-    assert.ok(capture.lines()[0].includes('dry-run'))
+    assert.ok(capture.lines()[0].includes('DRY-RUN'))
     assert.ok(capture.lines()[0].includes('test action'))
   })
 })

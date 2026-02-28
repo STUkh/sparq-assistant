@@ -78,6 +78,37 @@ Before starting a chained scenario (e.g., S4 after S1+S2), check accumulated con
 Auto-downgrade for chains: when entering a chained scenario, downgrade `checkpointLevel` from "full" to "standard" automatically (saves ~10K tokens across remaining checkpoints). Reuse existing P0.5 E2E Infrastructure Summary — do not re-discover.
 </enforcement>
 
+<distance_triggers>
+## Distance-Based Budget Awareness
+
+Tracks how far an agent has progressed from its initial instruction anchor, complementing raw token counting with work-unit distance metrics.
+
+### Distance Proxy Metrics
+- **Work units generated**: specs, test cases, findings — each pushes instructions further from attention
+- **Re-anchor count**: how many re-anchor pauses the agent has taken (from `context-anchoring.md`)
+- **Phases elapsed**: for orchestrator, how many phase transitions since workflow start
+
+### Per-Unit Token Estimates
+- Spec file (page + steps + spec): ~2,000 tokens
+- Manual test case (full format): ~500 tokens
+- Validation finding (with fix proposal): ~300 tokens
+- Re-anchor overhead (re-read + drift check): ~800 tokens per re-anchor pause
+
+### Re-Anchor Token Overhead Budgets
+- automation-engineer (20 specs): 4 re-anchors × ~800 = ~3,200 tokens overhead
+- manual-test-writer (30 tests): 2 category transitions + 1 mid-batch = 3 re-anchors × ~800 = ~2,400 tokens
+- test-validator (40 files, 6 categories): 6 category checks + ~3 calibration checks = ~7,200 tokens overhead
+
+### Combined Signal
+When BOTH conditions are true:
+1. Token consumption > 60% of estimated sub-agent budget
+2. Drift detected at the most recent re-anchor point
+
+Emit: `[sparq] {phase} Budget + drift warning: ~{N}% consumed with drift detected -- recommend completing current batch`
+
+This combined signal indicates the agent is both running low on context budget AND losing instruction fidelity — a high-risk condition for output quality.
+</distance_triggers>
+
 <exhaustion_protocol>
 ## Token Exhaustion Protocol
 

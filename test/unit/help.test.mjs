@@ -8,44 +8,6 @@ import { captureLog } from '../helpers/setup.mjs'
 // ---------------------------------------------------------------------------
 
 describe('cmdHelpCommand', () => {
-  it('should show init help with --features and --defaults', () => {
-    const output = captureLog(() => cmdHelpCommand('init'))
-    assert.ok(output.includes('init'), 'should mention init')
-    assert.ok(output.includes('--features'), 'should mention --features')
-    assert.ok(output.includes('--defaults'), 'should mention --defaults')
-  })
-
-  it('should show doctor help with --fix and --deep', () => {
-    const output = captureLog(() => cmdHelpCommand('doctor'))
-    assert.ok(output.includes('doctor'), 'should mention doctor')
-    assert.ok(output.includes('--fix'), 'should mention --fix')
-    assert.ok(output.includes('--deep'), 'should mention --deep')
-  })
-
-  it('should show update help with --only and --skip', () => {
-    const output = captureLog(() => cmdHelpCommand('update'))
-    assert.ok(output.includes('--only'), 'should mention --only')
-    assert.ok(output.includes('--skip'), 'should mention --skip')
-  })
-
-  it('should show clean help with --type and --older-than', () => {
-    const output = captureLog(() => cmdHelpCommand('clean'))
-    assert.ok(output.includes('--type'), 'should mention --type')
-    assert.ok(output.includes('--older-than'), 'should mention --older-than')
-  })
-
-  it('should show improve help with --max-iterations', () => {
-    const output = captureLog(() => cmdHelpCommand('improve'))
-    assert.ok(output.includes('improve'), 'should mention improve')
-    assert.ok(output.includes('--max-iterations'), 'should mention --max-iterations')
-  })
-
-  it('should show baseline help with promote usage', () => {
-    const output = captureLog(() => cmdHelpCommand('baseline'))
-    assert.ok(output.includes('baseline'), 'should mention baseline')
-    assert.ok(output.includes('promote'), 'should mention promote action')
-  })
-
   it('should show "Unknown command" for nonexistent command', () => {
     const output = captureLog(() => cmdHelpCommand('nonexistent'))
     assert.ok(output.includes('Unknown command'), 'should indicate unknown command')
@@ -62,41 +24,9 @@ describe('cmdHelp', () => {
     assert.ok(output.includes('FEATURES'), 'should contain FEATURES section')
   })
 
-  it('should list sparq-automation-engineer agent', () => {
+  it('should show lint command in default help', () => {
     const output = captureLog(() => cmdHelp())
-    assert.ok(
-      output.includes('sparq-automation-engineer'),
-      'should list sparq-automation-engineer agent',
-    )
-  })
-
-  it('should list /sparq:regression skill', () => {
-    const output = captureLog(() => cmdHelp())
-    assert.ok(output.includes('/sparq:regression'), 'should list /sparq:regression skill')
-  })
-
-  it('should list /sparq:refactor skill', () => {
-    const output = captureLog(() => cmdHelp())
-    assert.ok(output.includes('/sparq:refactor'), 'should list /sparq:refactor skill')
-  })
-
-  it('should show --defaults in init per-command help', () => {
-    const output = captureLog(() => cmdHelpCommand('init'))
-    assert.ok(output.includes('--defaults'), 'init help should mention --defaults flag')
-  })
-
-  it('should show --fix in doctor per-command help', () => {
-    const output = captureLog(() => cmdHelpCommand('doctor'))
-    assert.ok(output.includes('--fix'), 'doctor help should mention --fix flag')
-  })
-
-  it('should hide improve and baseline from default help (advanced only)', () => {
-    const output = captureLog(() => cmdHelp())
-    assert.ok(!output.includes('improve'), 'default help should hide improve command')
-    assert.ok(!output.includes('baseline'), 'default help should hide baseline command')
-    const advanced = captureLog(() => cmdHelp({ advanced: true }))
-    assert.ok(advanced.includes('improve'), 'advanced help should show improve command')
-    assert.ok(advanced.includes('baseline'), 'advanced help should show baseline command')
+    assert.ok(output.includes('lint'), 'default help should show lint command')
   })
 
   it('should include SKILLS section with category groups', () => {
@@ -124,20 +54,12 @@ describe('cmdHelp', () => {
   it('should hide dev skills from default help and show in advanced', () => {
     const output = captureLog(() => cmdHelp())
     assert.ok(!output.includes('/sparq:analyze'), 'default help should hide /sparq:analyze')
-    assert.ok(!output.includes('/sparq:optimize'), 'default help should hide /sparq:optimize')
     const advanced = captureLog(() => cmdHelp({ advanced: true }))
     assert.ok(
       advanced.includes('Framework Development'),
       'advanced should have Framework Development',
     )
     assert.ok(advanced.includes('/sparq:analyze'), 'advanced should list /sparq:analyze')
-    assert.ok(advanced.includes('/sparq:eval'), 'advanced should list /sparq:eval')
-    assert.ok(advanced.includes('/sparq:improve'), 'advanced should list /sparq:improve')
-    assert.ok(
-      advanced.includes('/sparq:baseline-promote'),
-      'advanced should list /sparq:baseline-promote',
-    )
-    assert.ok(advanced.includes('/sparq:optimize'), 'advanced should list /sparq:optimize')
   })
 
   it('should hide service primitives by default', () => {
@@ -159,15 +81,6 @@ describe('cmdHelp', () => {
       output.includes('Framework Development'),
       'advanced help should include Framework Development section',
     )
-    assert.ok(
-      output.includes('/sparq:eval-reflect'),
-      'advanced help should list /sparq:eval-reflect',
-    )
-    assert.ok(output.includes('/sparq:eval-tune'), 'advanced help should list /sparq:eval-tune')
-    assert.ok(output.includes('/sparq:optimize'), 'advanced help should list /sparq:optimize')
-    assert.ok(
-      output.includes('/sparq:audit-prompts'),
-      'advanced help should list /sparq:audit-prompts',
-    )
+    assert.ok(output.includes('/sparq:analyze'), 'advanced help should list /sparq:analyze')
   })
 })

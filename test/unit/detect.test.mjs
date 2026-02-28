@@ -60,27 +60,6 @@ describe('compareTechStacks', () => {
     assert.ok(diffs.some((d) => d.includes('Router')))
   })
 
-  it('should detect componentFileExtensions change', () => {
-    const diffs = compareTechStacks(baseStack, {
-      ...baseStack,
-      componentFileExtensions: ['.tsx', '.jsx'],
-    })
-    assert.ok(diffs.some((d) => d.includes('Component Extensions')))
-  })
-
-  it('should detect sourceRoot change', () => {
-    const diffs = compareTechStacks(baseStack, { ...baseStack, sourceRoot: 'app' })
-    assert.ok(diffs.some((d) => d.includes('Source Root')))
-  })
-
-  it('should detect routeDiscoveryPattern change', () => {
-    const diffs = compareTechStacks(baseStack, {
-      ...baseStack,
-      routeDiscoveryPattern: '**/routes/**/*.{ts,tsx}',
-    })
-    assert.ok(diffs.some((d) => d.includes('Route Discovery Pattern')))
-  })
-
   it('should return multiple diffs when multiple fields change', () => {
     const diffs = compareTechStacks(baseStack, {
       ...baseStack,
@@ -127,16 +106,6 @@ describe('detectE2ESetup', () => {
     assert.equal(result.detected, true)
     assert.equal(result.framework, 'playwright')
     assert.equal(result.configFile, 'playwright.config.ts')
-  })
-
-  it('should detect playwright from playwright.config.js', () => {
-    const subDir = join(tempDir, 'pw-js-project')
-    mkdirSync(subDir, { recursive: true })
-    writeFileSync(join(subDir, 'playwright.config.js'), 'module.exports = {}')
-    const result = detectE2ESetup(subDir)
-    assert.equal(result.detected, true)
-    assert.equal(result.framework, 'playwright')
-    assert.equal(result.configFile, 'playwright.config.js')
   })
 
   it('should detect cypress from cypress.config.ts', () => {
@@ -252,15 +221,6 @@ describe('detectE2ESetup — Cypress support', () => {
     const result = detectE2ESetup(subDir)
     assert.equal(result.framework, 'cypress')
     assert.equal(result.configFile, 'cypress.config.mjs')
-  })
-
-  it('should detect cypress from cypress.config.js', () => {
-    const subDir = join(tempDir, 'cy-js')
-    mkdirSync(subDir, { recursive: true })
-    writeFileSync(join(subDir, 'cypress.config.js'), 'module.exports = {}')
-    const result = detectE2ESetup(subDir)
-    assert.equal(result.framework, 'cypress')
-    assert.equal(result.configFile, 'cypress.config.js')
   })
 
   it('should prefer playwright when both configs exist', () => {

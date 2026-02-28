@@ -249,10 +249,6 @@ describe('Feature-based selective installation', () => {
       'sparq-validate skill should be installed',
     )
     assert.ok(
-      existsSync(join(tempDir, '.claude', 'skills', 'sparq-regression')),
-      'sparq-regression skill should be installed',
-    )
-    assert.ok(
       existsSync(join(tempDir, '.claude', 'skills', 'sparq-refactor')),
       'sparq-refactor skill should be installed',
     )

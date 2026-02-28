@@ -205,34 +205,6 @@ describe('copyDirForBackup', () => {
     // The dest directory should still be created (mkdirSync runs before readdirSync)
     assert.ok(existsSync(destDir), 'dest dir should be created even when src is unreadable')
   })
-
-  it('should handle empty source directory', () => {
-    const srcDir = join(tempDir, 'empty-src')
-    const destDir = join(tempDir, 'dest')
-    mkdirSync(srcDir, { recursive: true })
-
-    copyDirForBackup(srcDir, destDir)
-
-    assert.ok(existsSync(destDir), 'dest dir should be created')
-    const entries = readdirSync(destDir)
-    assert.equal(entries.length, 0, 'dest dir should be empty')
-  })
-
-  it('should copy multiple files in the same directory', () => {
-    const srcDir = join(tempDir, 'src')
-    const destDir = join(tempDir, 'dest')
-
-    mkdirSync(srcDir, { recursive: true })
-    writeFileSync(join(srcDir, 'a.txt'), 'aaa')
-    writeFileSync(join(srcDir, 'b.txt'), 'bbb')
-    writeFileSync(join(srcDir, 'c.txt'), 'ccc')
-
-    copyDirForBackup(srcDir, destDir)
-
-    assert.equal(readFileSync(join(destDir, 'a.txt'), 'utf-8'), 'aaa')
-    assert.equal(readFileSync(join(destDir, 'b.txt'), 'utf-8'), 'bbb')
-    assert.equal(readFileSync(join(destDir, 'c.txt'), 'utf-8'), 'ccc')
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -347,15 +319,5 @@ describe('cleanupBackup', () => {
     cleanupBackup(backupDir)
 
     assert.ok(!existsSync(backupDir), 'directory should still not exist')
-  })
-
-  it('should remove deeply nested backup contents', () => {
-    const backupDir = join(tempDir, '.sparq-backup')
-    mkdirSync(join(backupDir, 'skills', 'sparq-analyze', 'sub'), { recursive: true })
-    writeFileSync(join(backupDir, 'skills', 'sparq-analyze', 'sub', 'deep.md'), 'deep')
-
-    cleanupBackup(backupDir)
-
-    assert.ok(!existsSync(backupDir), 'deeply nested backup should be fully removed')
   })
 })

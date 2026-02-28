@@ -1,10 +1,11 @@
 {
   "name": "sparq-assistant",
   "version": "1.0.0",
-  "description": "QA Assistant Framework for Claude Code — interactive testing toolkit with Figma, Jira, Confluence, TestRail, Qase, and Playwright integration",
+  "description": "AI-powered QA test generation for Claude Code, Cursor, and Codex — generate Playwright and Cypress E2E suites from Jira, Figma, and Confluence requirements",
   "type": "module",
   "bin": {
-    "sparq-assistant": "./bin/sparq.mjs"
+    "sparq-assistant": "./bin/sparq.mjs",
+    "sparq": "./bin/sparq.mjs"
   },
   "exports": {
     ".": "./bin/sparq.mjs"
@@ -32,27 +33,37 @@
   ],
   "keywords": [
     "claude-code",
+    "cursor",
+    "codex",
     "qa",
     "testing",
     "playwright",
+    "cypress",
+    "e2e",
     "test-automation",
+    "test-generation",
+    "ai-testing",
     "manual-testing",
+    "regression-testing",
     "testrail",
+    "qase",
+    "zephyr",
     "figma",
     "jira",
+    "confluence",
     "mcp"
   ],
   "author": "SparQ",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": ">=22.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sparq-assistant/sparq-assistant"
+    "url": "https://github.com/STUkh/sparq-assistant"
   },
   "bugs": {
-    "url": "https://github.com/sparq-assistant/sparq-assistant/issues"
+    "url": "https://github.com/STUkh/sparq-assistant/issues"
   },
-  "homepage": "https://github.com/sparq-assistant/sparq-assistant#readme"
+  "homepage": "https://github.com/STUkh/sparq-assistant#readme"
 }

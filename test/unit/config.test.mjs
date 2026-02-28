@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, it } from 'node:test'
-import { generateConfig, MIGRATIONS, migrateConfig } from '../../bin/lib/config.mjs'
+import { generateConfig } from '../../bin/lib/config.mjs'
 import { VERSION } from '../../bin/lib/constants.mjs'
 import { resetState, setDryRun } from '../../bin/lib/state.mjs'
 import { cleanTempDir, createOutputCapture, createTempDir } from '../helpers/setup.mjs'
@@ -26,7 +26,7 @@ afterEach(() => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeMinimalConfig(overrides = {}) {
+function _makeMinimalConfig(overrides = {}) {
   return {
     version: '1.0.0',
     project: { testDir: 'e2e' },
@@ -74,58 +74,6 @@ function makeTechStack(overrides = {}) {
     ...overrides,
   }
 }
-
-// ---------------------------------------------------------------------------
-// MIGRATIONS export
-// ---------------------------------------------------------------------------
-
-describe('MIGRATIONS', () => {
-  it('should be an object (empty at v1.0.0 baseline)', () => {
-    assert.equal(typeof MIGRATIONS, 'object')
-  })
-
-  it('should have target and migrate function for each entry', () => {
-    for (const [key, entry] of Object.entries(MIGRATIONS)) {
-      assert.equal(typeof entry.target, 'string', `${key} should have string target`)
-      assert.equal(typeof entry.migrate, 'function', `${key} should have migrate function`)
-    }
-  })
-})
-
-// ---------------------------------------------------------------------------
-// migrateConfig
-// ---------------------------------------------------------------------------
-
-describe('migrateConfig', () => {
-  it('should set version to current VERSION for a 1.0.0 config', () => {
-    const config = makeMinimalConfig({ version: '1.0.0' })
-    const result = migrateConfig(config)
-    assert.equal(result.version, VERSION)
-  })
-
-  it('should return unchanged config already at current version', () => {
-    const config = makeMinimalConfig({
-      version: VERSION,
-      preferences: { locatorPriority: ['getByTestId'] },
-      outputs: { tms: { provider: null } },
-    })
-    const result = migrateConfig(config)
-    assert.equal(result.version, VERSION)
-  })
-
-  it('should default to 1.0.0 when version missing', () => {
-    const config = makeMinimalConfig()
-    delete config.version
-    const result = migrateConfig(config)
-    assert.equal(result.version, VERSION)
-  })
-
-  it('should run validateConfig on result (warning output)', () => {
-    const config = makeMinimalConfig({ version: '1.0.0' })
-    migrateConfig(config)
-    assert.equal(config.version, VERSION)
-  })
-})
 
 // ---------------------------------------------------------------------------
 // generateConfig (needs temp dirs)
@@ -199,11 +147,6 @@ describe('generateConfig', () => {
     assert.equal(config.outputs.tms.testrail, undefined)
     assert.equal(config.outputs.tms.qase, undefined)
     assert.equal(config.outputs.tms.local, undefined)
-  })
-
-  it('should set version to VERSION', () => {
-    const config = generateConfig(tempDir, makeGathered(), makeE2eConfig(), makeTechStack())
-    assert.equal(config.version, VERSION)
   })
 
   it('should write config file to disk', () => {

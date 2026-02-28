@@ -1,0 +1,37 @@
+name: Coverage
+
+on:
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    container: node:22-slim
+    steps:
+      - run: apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
+      - run: npm ci --quiet
+      - name: Run tests with coverage
+        run: |
+          npm run test:coverage 2>&1 | tee coverage-output.txt
+          node --input-type=module -e "
+            import { readFileSync } from 'node:fs';
+            const out = readFileSync('coverage-output.txt', 'utf-8');
+            const match = out.match(/all files[^\n]*?\|\s*([\d.]+)/i);
+            if (match) {
+              const pct = parseFloat(match[1]);
+              console.log('Coverage:', pct + '%');
+              if (pct < 80) {
+                console.error('ERROR: Coverage ' + pct + '% is below 80% threshold');
+                process.exit(1);
+              }
+            } else {
+              console.log('Coverage percentage not found in output — skipping gate');
+            }
+          "

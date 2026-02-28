@@ -86,8 +86,9 @@ If a tool name fails, the server key in `.mcp.json` may differ. Check `.mcp.json
 - `mcp__testrail__get_case` (case_id: number): Fetch a single test case by ID. Used by: sparq-sync, sparq-manual-to-e2e
 - `mcp__testrail__add_case` (section_id: number, title: string, type_id?: number, priority_id?: number, ...): Create a new test case. Used by: sparq-export
 - `mcp__testrail__update_case` (case_id: number, ...fields): Update an existing test case. Used by: sparq-export
-- `mcp__testrail__add_run` (project_id: number, name: string, case_ids?: number[]): Create a new test run. Used by: sparq-export
-- `mcp__testrail__add_result_for_case` (run_id: number, case_id: number, status_id: number, comment?: string): Add a test result for a case in a run. Used by: sparq-export
+- `mcp__testrail__add_run` (project_id: number, name: string, case_ids?: number[]): Create a new test run. Used by: sparq-export, sparq-publish-results
+- `mcp__testrail__add_results_for_cases` (run_id: number, results: Array<{case_id, status_id, comment?}>): Batch-add results for multiple cases in one call. Used by: sparq-publish-results
+- `mcp__testrail__add_result_for_case` (run_id: number, case_id: number, status_id: number, comment?: string): Add a single test result for a case in a run. Used by: sparq-export, sparq-publish-results
 </testrail_tools>
 
 **Reference**: `testrail-formats.md`
@@ -108,11 +109,33 @@ If a tool name fails, the server key in `.mcp.json` may differ. Check `.mcp.json
 - `mcp__qase__create_case` (project_code, title, ...): Create case. Used by: sparq-export
 - `mcp__qase__update_case` (project_code, case_id, ...): Update case. Used by: sparq-export
 - `mcp__qase__bulk_create_cases` (project_code, cases[]): Batch create. Used by: sparq-export
-- `mcp__qase__create_run` (project_code, title, ...): Create run. Used by: sparq-export
-- `mcp__qase__create_result` (project_code, run_id, ...): Add result. Used by: sparq-export
+- `mcp__qase__create_run` (project_code, title, ...): Create run. Used by: sparq-export, sparq-publish-results
+- `mcp__qase__create_result` (project_code, run_id, case_id, status, time_ms?, comment?): Add result per test case. Used by: sparq-export, sparq-publish-results
 </qase_tools>
 
 **Reference**: `qase-formats.md`
+
+---
+
+## Zephyr Scale
+
+**Server**: `zephyr` | **Type**: stdio | **Package**: `mcp-zephyr-scale`
+**Config**: `mcp/zephyr.json`
+**Status**: Verified (env vars confirmed from `src/index.ts` `validateEnvironment()` in v0.3.4)
+**Required env (MCP process)**: `ZEPHYR_API_TOKEN`, `JIRA_PROJECT_KEY` (mapped from user's `ZEPHYR_PROJECT_KEY`)
+**Required env (shell, L2 REST fallback)**: `ZEPHYR_BASE_URL`, `ZEPHYR_API_TOKEN`, `ZEPHYR_PROJECT_KEY`
+
+<zephyr_tools>
+- `mcp__zephyr__get_test_cases` (projectKey: string, folderId?: string): List test cases in a project or folder. Used by: sparq-export, sparq-manual-to-e2e
+- `mcp__zephyr__get_test_case` (testCaseKey: string): Fetch a single test case by key (e.g., "PROJ-T1"). Used by: sparq-sync, sparq-manual-to-e2e
+- `mcp__zephyr__create_test_case` (projectKey: string, name: string, status?: string, priority?: string, ...): Create a new test case. Used by: sparq-export
+- `mcp__zephyr__update_test_case` (testCaseKey: string, ...fields): Update an existing test case. Used by: sparq-export
+- `mcp__zephyr__get_folders` (projectKey: string): List folders in a project for test organization. Used by: sparq-export
+- `mcp__zephyr__create_test_cycle` (projectKey: string, name: string, description?: string): Create a new test cycle (run). Used by: sparq-publish-results
+- `mcp__zephyr__create_test_execution` (testCycleKey: string, testCaseKey: string, statusName: string, comment?: string): Add execution result for a test case. Used by: sparq-publish-results
+</zephyr_tools>
+
+**Reference**: `zephyr-formats.md`
 
 ---
 
@@ -171,7 +194,7 @@ If a tool name fails, the server key in `.mcp.json` may differ. Check `.mcp.json
 ## SparQ Agent Subset
 
 <sparq_subset>
-The ~15 MCP tools SparQ agents routinely use (out of 60 total):
+The ~18 MCP tools SparQ agents routinely use (out of 68 total):
 
 **Atlassian — Jira**: `jira_get_issue`, `jira_search_using_jql`
 **Atlassian — Confluence**: `confluence_get_page`, `confluence_search_using_cql`, `confluence_get_page_descendants`
@@ -179,6 +202,7 @@ The ~15 MCP tools SparQ agents routinely use (out of 60 total):
 **Playwright**: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_evaluate`
 **TestRail**: `get_cases`, `add_case`, `get_sections`
 **Qase**: `list_cases`, `create_case`, `list_suites`
+**Zephyr Scale**: `get_test_cases`, `create_test_case` (export/publish-results only)
 
 All other tools are available for export, diagnostics, or advanced workflows but are not part of the core agent pipeline.
 </sparq_subset>
@@ -189,8 +213,9 @@ All other tools are available for export, diagnostics, or advanced workflows but
 - Atlassian (Jira): 4 tools, Convention-based, N/A (HTTP)
 - Atlassian (Confluence): 5 tools, Convention-based, N/A (HTTP)
 - Figma: 12 tools, Verified, N/A (HTTP)
-- TestRail: 8 tools, Convention-based, `@bun913/mcp-testrail@0.17.2`
+- TestRail: 9 tools, Convention-based, `@bun913/mcp-testrail`
 - Qase: 9 tools, Convention-based, `@qase/mcp-server`
+- Zephyr Scale: 7 tools, Verified, `mcp-zephyr-scale`
 - Playwright: 22 tools, Verified, `@playwright/mcp@latest`
-- **Total: 60 tools**
+- **Total: 68 tools**
 </tool_summary>

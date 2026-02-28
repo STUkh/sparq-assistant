@@ -9,7 +9,6 @@ import {
   EXIT_FILESYSTEM,
   EXIT_GENERAL,
   EXIT_USAGE,
-  MODEL_TIER_MAP,
   PKG_AGENTS_DIR,
   PKG_SKILLS_DIR,
   PKG_TEMPLATES_DIR,
@@ -17,8 +16,11 @@ import {
 } from '../constants.mjs'
 import { detectE2ESetup, detectTechStack, displayTechStack } from '../detect.mjs'
 import { confirm, toForwardSlash } from '../files.mjs'
+import { installHooks } from '../hooks.mjs'
 import { installAndReport, installRuleFile, mergeMcpConfigs } from '../install.mjs'
+import { acquireLock, releaseLock } from '../lock.mjs'
 import { buildManifest, getModifiedFiles, readManifest, writeManifest } from '../manifest.mjs'
+import { detectPlatforms, generateAgentsMd, installPlatformExtras } from '../platform.mjs'
 import {
   checkInterrupted,
   dryRun,
@@ -31,12 +33,6 @@ import {
   style,
   warn,
 } from '../state.mjs'
-import {
-  applyCachedGuidance,
-  applyLayerOne,
-  detectCurrentTier,
-  updateAgentModels,
-} from '../tune-engine.mjs'
 import { validateTargetDir } from '../validate.mjs'
 
 // ---------------------------------------------------------------------------
@@ -160,30 +156,6 @@ function validateFilterArgs(only, skip) {
 }
 
 /**
- * Re-apply model tier enhancements after agents are overwritten by update.
- */
-function reapplyTierEnhancements(targetDir) {
-  const currentTier = detectCurrentTier(targetDir)
-  if (currentTier === 'premium' || !MODEL_TIER_MAP[currentTier]) return
-
-  console.log(`\n${style.bold(`${emoji.config}Re-applying ${currentTier} tier enhancements:`)}`)
-  const l1Applied = applyLayerOne(targetDir, currentTier).filter((r) => r.status === 'applied')
-  if (l1Applied.length > 0) ok(`Layer 1: ${l1Applied.length} agent(s) enhanced`)
-
-  const modelsChanged = updateAgentModels(targetDir, currentTier).filter((r) => r.changed)
-  if (modelsChanged.length > 0) ok(`Model fields: ${modelsChanged.length} agent(s) updated`)
-
-  const l2Applied = applyCachedGuidance(targetDir, currentTier).filter(
-    (r) => r.status === 'applied',
-  )
-  if (l2Applied.length > 0) ok(`Layer 2 cache: ${l2Applied.length} agent(s) restored`)
-
-  if (l1Applied.length === 0 && modelsChanged.length === 0 && l2Applied.length === 0) {
-    info('Tier enhancements already current')
-  }
-}
-
-/**
  * Run the file update steps (agents, skills, templates, mcp, config).
  */
 function runUpdateSteps(targetDir, claudeDir, only, skip) {
@@ -240,13 +212,29 @@ function runUpdateSteps(targetDir, claudeDir, only, skip) {
     updateConfig(targetDir)
   }
 
-  // Re-apply model tier enhancements after agent overwrite
-  if (shouldUpdate('agents', only, skip)) {
-    reapplyTierEnhancements(targetDir)
+  // --- Refresh hook scripts ---
+  installHooks(targetDir, { update: true })
+
+  // --- Platform extras + AGENTS.md ---
+  // Read manifest early so mcpServersAdded is available for platform extras
+  const existingManifest = readManifest(targetDir)
+  const detectedPlatforms = detectPlatforms(targetDir)
+  if (detectedPlatforms.length > 0) {
+    console.log(
+      `\n${style.bold(`${emoji.config}Platform extras (${detectedPlatforms.join(', ')}):`)}`,
+    )
+    checkInterrupted()
+    const techStack = detectTechStack(targetDir)
+    const e2eConfig = detectE2ESetup(targetDir)
+    installPlatformExtras(targetDir, detectedPlatforms, {
+      techStack,
+      e2eConfig,
+      mcpServersAdded: existingManifest?.mcpServersAdded,
+    })
   }
+  generateAgentsMd(targetDir)
 
   console.log(`\n${style.bold(`${emoji.manifest}[${++step}/${totalSteps}] Manifest:`)}`)
-  const existingManifest = readManifest(targetDir)
   const manifest = buildManifest(targetDir)
   // Preserve mcpServersAdded from previous manifest (needed for safe uninstall)
   if (existingManifest?.mcpServersAdded) {
@@ -260,6 +248,36 @@ function runUpdateSteps(targetDir, claudeDir, only, skip) {
     totalCopied: fileResults.reduce((sum, r) => sum + r.copied, 0),
     totalErrors: fileResults.reduce((sum, r) => sum + r.errors, 0),
   }
+}
+
+/**
+ * Attempt rollback from backup after a failed update.
+ */
+function rollbackUpdate(backupCreated, targetDir, backupDir) {
+  if (!backupCreated) return
+  warn('Rolling back to previous version...')
+  try {
+    restoreBackup(targetDir, backupDir)
+    cleanupBackup(backupDir)
+    info('Rollback complete. Files have been restored to their previous state.')
+  } catch (restoreErr) {
+    warn(`Backup restore failed. Manual restore from: ${backupDir}`)
+    warn(`Error: ${restoreErr.message}`)
+  }
+}
+
+/**
+ * Acquire the concurrency lock or emit an actionable error and return false.
+ * Returns true when in dry-run mode (lock not needed).
+ */
+function tryAcquireLock(targetDir) {
+  if (isDryRun()) return true
+  const lockResult = acquireLock(targetDir)
+  if (lockResult.acquired) return true
+  const age = lockResult.ageMs ? ` (running for ${Math.round(lockResult.ageMs / 1000)}s)` : ''
+  fail(`Another SparQ command is already running (PID ${lockResult.pid})${age}.`)
+  info('If this is stale, run: sparq clean --type lock')
+  return false
 }
 
 export async function cmdUpdate(
@@ -281,13 +299,16 @@ export async function cmdUpdate(
   const shouldProceed = await confirmModifiedFiles(targetDir, nonInteractive, force)
   if (!shouldProceed) return
 
+  if (!tryAcquireLock(targetDir)) process.exit(EXIT_GENERAL)
+
   let backupCreated = false
   const backupDir = join(targetDir, '.sparq', '.backup')
-  if (!isDryRun()) {
-    backupCreated = createBackup(targetDir, backupDir)
-  }
 
   try {
+    if (!isDryRun()) {
+      backupCreated = createBackup(targetDir, backupDir)
+    }
+
     const { categories, totalCopied, totalErrors } = runUpdateSteps(
       targetDir,
       claudeDir,
@@ -310,19 +331,9 @@ export async function cmdUpdate(
     console.log()
   } catch (err) {
     fail(`Update failed: ${err.message}`)
-
-    if (backupCreated) {
-      warn('Rolling back to previous version...')
-      try {
-        restoreBackup(targetDir, backupDir)
-        cleanupBackup(backupDir)
-        info('Rollback complete. Files have been restored to their previous state.')
-      } catch (restoreErr) {
-        warn(`Backup restore failed. Manual restore from: ${backupDir}`)
-        warn(`Error: ${restoreErr.message}`)
-      }
-    }
-
+    rollbackUpdate(backupCreated, targetDir, backupDir)
     process.exit(EXIT_GENERAL)
+  } finally {
+    releaseLock(targetDir)
   }
 }

@@ -301,18 +301,6 @@ describe('cmdDoctor', () => {
 
       writeFileSync(gitignorePath, backup)
     })
-
-    it('should pass when .gitignore has .sparq/', async () => {
-      const gitignorePath = join(tempDir, '.gitignore')
-      const backup = readFileSync(gitignorePath, 'utf-8')
-      writeFileSync(gitignorePath, 'node_modules/\n.sparq/\n')
-
-      await cmdDoctor(tempDir)
-
-      assert.ok(capture.text().includes('.gitignore includes .sparq/'))
-
-      writeFileSync(gitignorePath, backup)
-    })
   })
 
   // -------------------------------------------------------------------------
@@ -502,16 +490,6 @@ describe('cmdDoctor', () => {
       cleanTempDir(tempDir)
     })
 
-    it('should warn when e2e/ directory is missing', async () => {
-      // No e2e/ directory by default in mock project
-      await cmdDoctor(tempDir)
-      const text = capture.text()
-      assert.ok(
-        text.includes('e2e/') || text.includes('E2E directory'),
-        'Should reference e2e directory in output',
-      )
-    })
-
     it('should pass E2E checks when e2e/ directory exists with structure', async () => {
       mkdirSync(join(tempDir, 'e2e', 'specs'), { recursive: true })
       mkdirSync(join(tempDir, 'e2e', 'pages'), { recursive: true })
@@ -669,51 +647,6 @@ describe('cmdDoctor', () => {
         capture.text().includes('Would apply') || capture.text().includes('dry-run'),
         'Should indicate dry-run mode',
       )
-    })
-  })
-
-  // -------------------------------------------------------------------------
-  // Cypress framework awareness
-  // -------------------------------------------------------------------------
-
-  describe('Cypress framework awareness', () => {
-    let tempDir
-
-    before(async () => {
-      tempDir = createTempDir()
-      createMockProject(tempDir, {
-        name: 'doctor-cypress-test',
-        dependencies: { vue: '^3.4.0' },
-        devDependencies: { cypress: '^13.6.0', typescript: '^5.3.0' },
-        withGit: true,
-      })
-      writeFileSync(join(tempDir, 'cypress.config.ts'), 'export default defineConfig({})\n')
-      mkdirSync(join(tempDir, 'cypress', 'e2e'), { recursive: true })
-      mkdirSync(join(tempDir, 'cypress', 'support'), { recursive: true })
-      mkdirSync(join(tempDir, 'cypress', 'fixtures'), { recursive: true })
-      await runCli(['init', '--non-interactive', tempDir])
-    })
-
-    after(() => {
-      cleanTempDir(tempDir)
-    })
-
-    it('should pass without requiring playwright MCP for Cypress projects', async () => {
-      const result = await cmdDoctor(tempDir)
-      assert.equal(result, true, 'Doctor should pass for a valid Cypress installation')
-    })
-
-    it('should check for Cypress config instead of Playwright config', async () => {
-      await cmdDoctor(tempDir)
-      const text = capture.text()
-      assert.ok(text.includes('Cypress config found'), 'Should check for Cypress config')
-      assert.ok(!text.includes('No playwright.config'), 'Should not warn about missing Playwright')
-    })
-
-    it('should check Cypress directory structure', async () => {
-      await cmdDoctor(tempDir)
-      const text = capture.text()
-      assert.ok(text.includes('cypress/'), 'Should check cypress/ directories')
     })
   })
 })

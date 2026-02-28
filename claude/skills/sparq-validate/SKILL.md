@@ -105,3 +105,5 @@ If multiple sources disagree on a selector or text value, flag as Warning with b
 ```
 
 After validation completes, consider running `/sparq:sync` if requirements may have also changed.
+
+**Complementary tool**: Run `sparq lint {e2e-directory}/` before or after validate for fast structural checks (locator quality, flaky patterns, assertion coverage) — deterministic, CI-compatible, zero model inference. `/sparq:validate` handles semantic/UI drift; `sparq lint` handles code-quality patterns.

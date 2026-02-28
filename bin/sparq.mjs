@@ -5,14 +5,12 @@
 
 import { parseArgs } from './lib/args.mjs'
 import { cmdAudit } from './lib/commands/audit.mjs'
-import { cmdBaseline } from './lib/commands/baseline.mjs'
 import { cmdClean } from './lib/commands/clean.mjs'
+import { cmdCoverage } from './lib/commands/coverage.mjs'
 import { cmdDoctor } from './lib/commands/doctor.mjs'
-import { cmdEval } from './lib/commands/eval.mjs'
 import { cmdHelp, cmdHelpCommand } from './lib/commands/help.mjs'
-import { cmdImprove } from './lib/commands/improve.mjs'
 import { cmdInit } from './lib/commands/init.mjs'
-import { cmdTune } from './lib/commands/tune.mjs'
+import { cmdLint } from './lib/commands/lint.mjs'
 import { cmdUninstall } from './lib/commands/uninstall.mjs'
 import { cmdUpdate } from './lib/commands/update.mjs'
 import { COMMANDS, EXIT_GENERAL, EXIT_SUCCESS, EXIT_USAGE, VERSION } from './lib/constants.mjs'
@@ -25,6 +23,7 @@ import {
   setVerbosity,
   style,
 } from './lib/state.mjs'
+import { checkForUpdate, showUpdateNotification } from './lib/update-check.mjs'
 
 // ---------------------------------------------------------------------------
 // Signal Handling (#17)
@@ -38,12 +37,37 @@ function shutdown(label) {
 
 process.on('SIGINT', () => shutdown('Interrupted'))
 process.on('SIGTERM', () => shutdown('Terminated'))
+process.on('unhandledRejection', (reason) => {
+  fail(`Unhandled error: ${reason instanceof Error ? reason.message : String(reason)}`)
+  info(
+    `Run with --verbose for full details, or report at https://github.com/STUkh/sparq-assistant/issues`,
+  )
+  // Defer exit by one microtask tick so finally blocks (e.g. releaseLock) can complete
+  setImmediate(() => process.exit(EXIT_GENERAL))
+})
+process.on('uncaughtException', (err) => {
+  fail(`Uncaught exception: ${err.message}`)
+  info(
+    `Run with --verbose for full details, or report at https://github.com/STUkh/sparq-assistant/issues`,
+  )
+  setImmediate(() => process.exit(EXIT_GENERAL))
+})
 
 // ---------------------------------------------------------------------------
 // Flag Validation
 // ---------------------------------------------------------------------------
 
-function validateFlags({ quiet, verbose, defaults, nonInteractive, showVersion, showHelp }) {
+function validateFlags({
+  quiet,
+  verbose,
+  defaults,
+  nonInteractive,
+  showVersion,
+  showHelp,
+  noColor,
+}) {
+  // Apply --no-color early — styleText checks NO_COLOR at call time
+  if (noColor) process.env.NO_COLOR = '1'
   if (showVersion) {
     console.log(VERSION)
     process.exit(EXIT_SUCCESS)
@@ -69,6 +93,7 @@ const COMMAND_HANDLERS = {
       defaults: parsed.defaults,
       features: parsed.features,
       ciProvider: parsed.ciProvider,
+      workspace: parsed.workspace,
     }),
   update: async (parsed) =>
     cmdUpdate(parsed.targetDir, {
@@ -78,7 +103,10 @@ const COMMAND_HANDLERS = {
       skip: parsed.skip,
     }),
   uninstall: async (parsed) =>
-    cmdUninstall(parsed.targetDir, { force: parsed.force, nonInteractive: parsed.nonInteractive }),
+    cmdUninstall(parsed.targetDir, {
+      force: parsed.force,
+      nonInteractive: parsed.nonInteractive,
+    }),
   clean: async (parsed) =>
     cmdClean(parsed.targetDir, {
       all: parsed.all,
@@ -88,55 +116,52 @@ const COMMAND_HANDLERS = {
       nonInteractive: parsed.nonInteractive,
     }),
   doctor: async (parsed) => {
-    if (!(await cmdDoctor(parsed.targetDir, { deep: parsed.deep, fix: parsed.fix }))) {
+    if (
+      !(await cmdDoctor(parsed.targetDir, {
+        deep: parsed.deep,
+        fix: parsed.fix,
+        workspace: parsed.workspace,
+      }))
+    ) {
       process.exit(EXIT_GENERAL)
     }
   },
-  audit: async (parsed) =>
-    cmdAudit(parsed.targetDir, {
-      fix: parsed.fix,
-      json: parsed.json,
-    }),
-  eval: async (parsed) =>
-    cmdEval({
-      caseName: parsed.evalCaseName,
-      all: parsed.all,
-      model: parsed.model ?? 'mock',
-      yes: parsed.yes,
-      audit: parsed.audit,
-      trends: parsed.trends,
-      project: parsed.project ?? undefined,
-      strict: parsed.strict,
-      allowSkips: parsed.allowSkips,
-      noClean: parsed.noClean,
-      artifactRoot: parsed.artifactRoot ?? undefined,
-    }),
-  improve: async (parsed) =>
-    cmdImprove({
-      caseName: parsed.improveCaseName,
-      all: parsed.all,
-      model: parsed.model ?? undefined,
-      project: parsed.project ?? undefined,
-      strict: parsed.strict,
-      allowSkips: parsed.allowSkips,
-      maxIterations: parsed.maxIterations ?? undefined,
-      artifactRoot: parsed.artifactRoot ?? undefined,
-    }),
-  baseline: async (parsed) =>
-    cmdBaseline({
-      action: parsed.baselineAction,
-      caseName: parsed.baselineCaseName,
-      all: parsed.all,
-      model: parsed.model ?? undefined,
-    }),
-  tune: async (parsed) =>
-    cmdTune({
-      targetDir: parsed.targetDir,
-      subcommand: parsed.subcommand,
-      tier: parsed.tier,
-      force: parsed.force,
-      nonInteractive: parsed.nonInteractive,
-    }),
+  audit: async (parsed) => {
+    if (
+      !(await cmdAudit(parsed.targetDir, {
+        fix: parsed.fix,
+        json: parsed.json,
+        strict: parsed.strict,
+      }))
+    ) {
+      process.exit(EXIT_GENERAL)
+    }
+  },
+  lint: async (parsed) => {
+    if (
+      !(await cmdLint(parsed.targetDir, {
+        strict: parsed.strict,
+        threshold: parsed.threshold,
+        format: parsed.format,
+        coverageGate: parsed.coverageGate,
+        workspace: parsed.workspace,
+        allWorkspaces: parsed.allWorkspaces,
+      }))
+    ) {
+      process.exit(EXIT_GENERAL)
+    }
+  },
+  coverage: async (parsed) => {
+    if (
+      !(await cmdCoverage(parsed.targetDir, {
+        format: parsed.format,
+        threshold: parsed.threshold,
+        workspace: parsed.workspace,
+      }))
+    ) {
+      process.exit(EXIT_GENERAL)
+    }
+  },
   help: async (parsed) => {
     if (parsed.advanced || parsed.subcommand === 'advanced') {
       cmdHelp({ advanced: true })
@@ -170,6 +195,20 @@ async function runCommand(parsed) {
 }
 
 // ---------------------------------------------------------------------------
+// Update Check Guard
+// ---------------------------------------------------------------------------
+
+function shouldCheckForUpdate(parsed) {
+  return (
+    !parsed.noUpdateCheck &&
+    !process.env.SPARQ_NO_UPDATE_CHECK &&
+    !process.env.CI &&
+    !parsed.showVersion &&
+    !parsed.showHelp
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main (#3, #6)
 // ---------------------------------------------------------------------------
 
@@ -178,6 +217,17 @@ async function main() {
   const { quiet, verbose } = parsed
 
   validateFlags(parsed)
+
+  // Per-command unknown flag validation
+  if (parsed.unknownFlags.length > 0) {
+    for (const flag of parsed.unknownFlags) {
+      const prefix = flag.short ? '-' : '--'
+      let msg = `Unknown flag for '${parsed.command ?? 'sparq'}': ${prefix}${flag.name}`
+      if (flag.suggestion) msg += `. Did you mean --${flag.suggestion}?`
+      fail(msg)
+    }
+    process.exit(EXIT_USAGE)
+  }
 
   // (#31) Set verbosity
   if (quiet) setVerbosity('quiet')
@@ -189,7 +239,14 @@ async function main() {
     console.log(`${style.boldYellow(`  ${emoji.dryRun}DRY RUN MODE — no files will be written`)}\n`)
   }
 
+  // Fire-and-forget update check (non-blocking)
+  const doCheck = shouldCheckForUpdate(parsed)
+  if (doCheck) checkForUpdate().catch(() => {})
+
   await runCommand(parsed)
+
+  // Show notification after command completes
+  if (doCheck) showUpdateNotification(VERSION, { command: parsed.command })
 }
 
 main().catch((err) => {

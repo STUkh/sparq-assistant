@@ -3,6 +3,18 @@
 import { styleText } from 'node:util'
 
 // ---------------------------------------------------------------------------
+// Color Detection (dynamic — supports --no-color applied after module load)
+// ---------------------------------------------------------------------------
+
+/**
+ * Check whether color output is currently enabled.
+ * Called at runtime so --no-color (which sets NO_COLOR after import) is respected.
+ */
+function colorEnabled() {
+  return Boolean(process.stdout.isTTY && !process.env.NO_COLOR)
+}
+
+// ---------------------------------------------------------------------------
 // Mutable State (singleton)
 // ---------------------------------------------------------------------------
 
@@ -37,8 +49,10 @@ export function resetState() {
 // Style Helpers
 // ---------------------------------------------------------------------------
 
+// Initial snapshot — backward-compat export; output functions use colorEnabled() at call time
 export const useColor = process.stdout.isTTY && !process.env.NO_COLOR
 
+// Static snapshots — backward-compat exports; ok/warn/fail/info compute dynamically below
 export const SYM_OK = useColor ? '\u2713' : '[OK]'
 export const SYM_WARN = useColor ? '\u26A0' : '[WARN]'
 export const SYM_FAIL = useColor ? '\u2717' : '[FAIL]'
@@ -48,72 +62,50 @@ export const SYM_INFO = useColor ? '\u2139' : '[INFO]'
 // Emoji Icons (suppressed in non-TTY / NO_COLOR environments)
 // ---------------------------------------------------------------------------
 
-export const emoji = useColor
-  ? Object.freeze({
-      // Command headings
-      init: '\u{1F680} ',
-      update: '\u{1F504} ',
-      uninstall: '\u{1F5D1}\uFE0F  ',
-      clean: '\u{1F9F9} ',
-      doctor: '\u{1FA7A} ',
-      audit: '\u{1F50E} ',
-      eval: '\u{1F9EA} ',
-      improve: '\u{1F6E0}\uFE0F  ',
-      baseline: '\u{1F3C1} ',
-      help: '\u{1F4D6} ',
-      // Step/phase icons
-      agents: '\u{1F916} ',
-      skills: '\u26A1 ',
-      templates: '\u{1F4C4} ',
-      config: '\u2699\uFE0F  ',
-      directories: '\u{1F4C1} ',
-      mcp: '\u{1F50C} ',
-      detectE2e: '\u{1F50D} ',
-      detectStack: '\u{1F527} ',
-      permissions: '\u{1F510} ',
-      claudeMd: '\u{1F4DD} ',
-      manifest: '\u{1F4CB} ',
-      gitignore: '\u{1F4CE} ',
-      // Status
-      complete: '\u{1F389} ',
-      rollback: '\u23EA ',
-      dryRun: '\u{1F3D7}\uFE0F  ',
-      interrupted: '\u26D4 ',
-      doctorPass: '\u2705 ',
-      doctorWarn: '\u26A0\uFE0F  ',
-      doctorFail: '\u274C ',
-    })
-  : Object.freeze({
-      init: '',
-      update: '',
-      uninstall: '',
-      clean: '',
-      doctor: '',
-      audit: '',
-      eval: '',
-      improve: '',
-      baseline: '',
-      help: '',
-      agents: '',
-      skills: '',
-      templates: '',
-      config: '',
-      directories: '',
-      mcp: '',
-      detectE2e: '',
-      detectStack: '',
-      permissions: '',
-      claudeMd: '',
-      manifest: '',
-      gitignore: '',
-      complete: '',
-      rollback: '',
-      dryRun: '',
-      interrupted: '',
-      doctorPass: '',
-      doctorWarn: '',
-      doctorFail: '',
-    })
+// Emoji map — Proxy resolves dynamically so --no-color applied after import is respected
+const _emojiColor = {
+  // Command headings
+  init: '\u{1F680} ',
+  update: '\u{1F504} ',
+  uninstall: '\u{1F5D1}\uFE0F  ',
+  clean: '\u{1F9F9} ',
+  doctor: '\u{1FA7A} ',
+  audit: '\u{1F50E} ',
+  lint: '\u{1F50E} ',
+  coverage: '\u{1F4CA} ',
+  help: '\u{1F4D6} ',
+  // Step/phase icons
+  agents: '\u{1F916} ',
+  skills: '\u26A1 ',
+  templates: '\u{1F4C4} ',
+  config: '\u2699\uFE0F  ',
+  directories: '\u{1F4C1} ',
+  mcp: '\u{1F50C} ',
+  detectE2e: '\u{1F50D} ',
+  detectStack: '\u{1F527} ',
+  permissions: '\u{1F510} ',
+  claudeMd: '\u{1F4DD} ',
+  manifest: '\u{1F4CB} ',
+  gitignore: '\u{1F4CE} ',
+  // Status
+  complete: '\u{1F389} ',
+  rollback: '\u23EA ',
+  dryRun: '\u{1F3D7}\uFE0F  ',
+  interrupted: '\u26D4 ',
+  doctorPass: '\u2705 ',
+  doctorWarn: '\u26A0\uFE0F  ',
+  doctorFail: '\u274C ',
+}
+
+export const emoji = new Proxy(_emojiColor, {
+  get(target, key) {
+    if (typeof key !== 'string') return undefined
+    return colorEnabled() ? (target[key] ?? '') : ''
+  },
+  set() {
+    return false
+  },
+})
 
 export const style = {
   bold: (t) => styleText('bold', t),
@@ -135,12 +127,24 @@ export const style = {
 // ---------------------------------------------------------------------------
 
 export const ok = (msg) => {
-  if (_verbosity !== 'quiet') console.log(`  ${style.green(SYM_OK)} ${msg}`)
+  if (_verbosity !== 'quiet') {
+    const sym = colorEnabled() ? '\u2713' : '[OK]'
+    console.log(`  ${style.green(sym)} ${msg}`)
+  }
 }
-export const warn = (msg) => console.log(`  ${style.yellow(SYM_WARN)} ${msg}`)
-export const fail = (msg) => console.log(`  ${style.red(SYM_FAIL)} ${msg}`)
+export const warn = (msg) => {
+  const sym = colorEnabled() ? '\u26A0' : '[WARN]'
+  console.log(`  ${style.yellow(sym)} ${msg}`)
+}
+export const fail = (msg) => {
+  const sym = colorEnabled() ? '\u2717' : '[FAIL]'
+  console.log(`  ${style.red(sym)} ${msg}`)
+}
 export const info = (msg) => {
-  if (_verbosity !== 'quiet') console.log(`  ${style.cyan(SYM_INFO)} ${msg}`)
+  if (_verbosity !== 'quiet') {
+    const sym = colorEnabled() ? '\u2139' : '[INFO]'
+    console.log(`  ${style.cyan(sym)} ${msg}`)
+  }
 }
 export const heading = (msg) => {
   if (_verbosity !== 'quiet') console.log(`\n${style.boldBlue(msg)}\n`)
@@ -155,7 +159,7 @@ export const heading = (msg) => {
  */
 export function dryRun(action, description) {
   if (_dryRun) {
-    console.log(`  ${style.dim(`[dry-run] ${description}`)}`)
+    console.log(`  ${style.yellow('[DRY-RUN]')} ${style.dim(description)}`)
     return
   }
   action()
@@ -168,6 +172,6 @@ export function dryRun(action, description) {
 export function checkInterrupted() {
   if (_interrupted) {
     console.log(`  ${style.yellow('Interrupted. Cleaning up...')}`)
-    process.exit(1)
+    process.exit(1) // EXIT_GENERAL — not imported to avoid circular dependency
   }
 }

@@ -11,6 +11,7 @@ Location: `.sparq/state/`
 - `config-snapshot.json`: Frozen config + E2E summary. Writer: orchestrator only. Readers: all agents, resume skill.
 - `parallel.json`: Parallel dispatch manifest + merge progress. Writer: orchestrator only. Readers: resume skill, orchestrator.
 - `journal.jsonl`: Chronological event log (append-only). Writer: orchestrator only. Readers: resume skill (fallback), debugging.
+- `decisions.json`: User checkpoint decisions and locked constraints. Writer: orchestrator only. Readers: orchestrator (dispatch), resume skill.
 
 **Write authority**: ONLY the orchestrator writes to `.sparq/state/`. Sub-agents NEVER write. Parallel Task agents read `config-snapshot.json` (Tier 3 read-only).
 </state_directory>
@@ -22,7 +23,7 @@ Location: `.sparq/state/`
 interface CurrentTask {
   version: "1.0"
   workflowId: string
-  scenario: "S1" | "S2" | "S3" | "S4" | "S5"
+  scenario: "S1" | "S1+S2" | "S2" | "S3" | "S4" | "S5" | "S6"
   feature: string
   autoChain: boolean
   chainPosition?: { chain: string[]; currentIndex: number }
@@ -126,6 +127,7 @@ Events: `workflow_start|complete|abort|resume`, `phase_start|complete|fail`, `ag
 - `current-task.json`: every state transition — phase start, agent dispatch, parallel dispatch, task completion, merge step, checkpoint present/approve, phase complete, error
 - `parallel.json`: parallel dispatch (create), per-task completion, each merge step
 - `journal.jsonl`: every event — append one JSON line terminated by `\n` (never read-modify-write)
+- `decisions.json`: after each checkpoint approval/rejection resolution (read existing array, append new decision, write full file)
 
 **Journal append**: Each entry is a complete, self-contained JSON line. A partial write (crash mid-append) produces an incomplete last line, detectable on read (JSON.parse fails). Truncate the partial line on recovery.
 
@@ -310,6 +312,12 @@ Entries with unknown `event` values are preserved but ignored during reconstruct
 2. Validate remaining entries against minimum schema (`event`, `ts`, `workflowId` fields present)
 3. Discard entries failing validation — log count of discarded entries
 4. Journal is non-critical for resume — corruption only affects audit trail and conflict resolution fallback
+
+**decisions.json corrupted** (unparseable JSON):
+1. Backup to `decisions.json.bak`
+2. Scan `journal.jsonl` for `checkpoint_approve` and `checkpoint_reject` events to reconstruct decision array
+3. If journal unavailable: initialize empty `{"version":"1.0","workflowId":"...","decisions":[]}`
+4. Warn: "Previous checkpoint decisions need re-confirmation at next checkpoint."
 </corruption_recovery>
 
 ## Teammate Compatibility

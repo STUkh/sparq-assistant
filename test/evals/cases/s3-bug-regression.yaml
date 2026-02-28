@@ -1,0 +1,29 @@
+name: "S3 bug mode: Bug regression from Jira ticket"
+scenario: S3
+input:
+  type: jira
+  identifier: "BUG-42"
+  fixtures:
+    jira: fixtures/jira-bug-form-crash.json
+    conventions: fixtures/project-conventions.md
+expected_outputs:
+  - path: "e2e/specs/settings/profile.spec.ts"
+    checks:
+      - has_pattern: REG-BUG-42-\d{3}
+      - has_pattern: "test.describe"
+      - has_pattern: "test[(]"
+      - has_pattern: "expect[(]"
+      - not_pattern: "@regression"
+      - not_pattern: "e2e/specs/regression"
+  - path: ".sparq/handoff.json"
+    checks:
+      - has_pattern: '"scenario"\s*:\s*"S3"'
+      - has_pattern: '"inputType"\s*:\s*"bug"'
+      - has_pattern: "status.*success"
+rubrics:
+  - regression-compliance
+  - format-compliance
+  - naming-conventions
+  - handoff-compliance
+  - assertion-detection
+  - executability-check

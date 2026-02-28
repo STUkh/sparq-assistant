@@ -214,10 +214,11 @@ describe('Login', () => {
 })
 ```
 
-Regression tests: use `describe` with grep tag:
+Regression tests: inline `describe` with `REG-` ID in the title for grep filtering:
 ```typescript
-describe('REG-BUG142-001: Fix login timeout', { tags: '@regression' }, () => {
-  it('should complete login within timeout', () => { /* ... */ })
+// Regression: BUG-142 — Login timeout on slow networks
+describe('REG-BUG142-001: Fix login timeout', () => {
+  it('should complete login within timeout (REG-BUG142-001)', () => { /* ... */ })
 })
 ```
 

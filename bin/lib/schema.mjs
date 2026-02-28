@@ -94,7 +94,7 @@ export const CONFIG_SCHEMA = {
             type: 'string',
             required: false,
             nullable: true,
-            enum: ['testrail', 'qase', null],
+            enum: ['testrail', 'qase', 'zephyr', null],
           },
           testrail: {
             type: 'object',
@@ -118,6 +118,21 @@ export const CONFIG_SCHEMA = {
                   'uppercase letters/digits/hyphens starting with a letter (e.g., "PROJ")',
               },
               suiteId: { type: 'number', required: false, nullable: true, min: 1 },
+            },
+          },
+          zephyr: {
+            type: 'object',
+            required: false,
+            properties: {
+              projectKey: {
+                type: 'string',
+                required: false,
+                nullable: true,
+                pattern: /^[A-Z][A-Z0-9_-]*$/,
+                patternDescription:
+                  'uppercase letters/digits/hyphens starting with a letter (e.g., "PROJ")',
+              },
+              folderId: { type: 'number', required: false, nullable: true, min: 1 },
             },
           },
         },
@@ -264,7 +279,7 @@ export const CONFIG_SCHEMA = {
             type: 'string',
             required: false,
             nullable: true,
-            enum: ['testrail', 'qase', 'local', null],
+            enum: ['testrail', 'qase', 'zephyr', 'local', null],
           },
           testrail: {
             type: 'object',
@@ -296,6 +311,21 @@ export const CONFIG_SCHEMA = {
                 patternDescription:
                   'uppercase letters/digits/hyphens starting with a letter (e.g., "PROJ")',
               },
+            },
+          },
+          zephyr: {
+            type: 'object',
+            required: false,
+            properties: {
+              projectKey: {
+                type: 'string',
+                required: false,
+                nullable: true,
+                pattern: /^[A-Z][A-Z0-9_-]*$/,
+                patternDescription:
+                  'uppercase letters/digits/hyphens starting with a letter (e.g., "PROJ")',
+              },
+              folderId: { type: 'number', required: false, nullable: true, min: 1 },
             },
           },
           local: {
@@ -354,12 +384,69 @@ export const CONFIG_SCHEMA = {
       },
     },
   },
+  workspaces: {
+    type: 'array',
+    required: false,
+    items: {
+      type: 'object',
+      required: false,
+      properties: {
+        path: {
+          type: 'string',
+          required: true,
+          minLength: 1,
+          custom: (value) => {
+            if (typeof value === 'string' && (value.startsWith('/') || value.startsWith('\\'))) {
+              return 'must be a relative path (no leading path separators)'
+            }
+            if (typeof value === 'string' && value.includes('..')) {
+              return 'must not contain ".." (path traversal not allowed)'
+            }
+            return null
+          },
+        },
+        name: {
+          type: 'string',
+          required: false,
+          minLength: 1,
+        },
+      },
+    },
+  },
   refresh: {
     type: 'object',
     required: false,
     properties: {
       preserveDeprecated: { type: 'boolean', required: false },
       autoApplyLowSeverity: { type: 'boolean', required: false },
+    },
+  },
+  viewports: {
+    type: 'object',
+    required: false,
+    properties: {
+      enabled: { type: 'boolean', required: false },
+      presets: {
+        type: 'array',
+        required: false,
+        items: {
+          type: 'string',
+          enum: ['desktop', 'laptop', 'tablet', 'mobile', 'mobile-lg'],
+        },
+      },
+      custom: {
+        type: 'array',
+        required: false,
+        items: {
+          type: 'object',
+          required: false,
+          properties: {
+            name: { type: 'string', required: true, minLength: 1 },
+            width: { type: 'number', required: true, min: 1 },
+            height: { type: 'number', required: true, min: 1 },
+          },
+        },
+      },
     },
   },
   preferences: {
@@ -404,6 +491,26 @@ export const CONFIG_SCHEMA = {
         type: 'string',
         required: false,
         enum: ['premium', 'balanced', 'economy'],
+      },
+      batchApproval: {
+        type: 'boolean',
+        required: false,
+      },
+      coverageThreshold: {
+        type: 'number',
+        required: false,
+        min: 0,
+        max: 100,
+      },
+    },
+  },
+  ci: {
+    type: 'object',
+    required: false,
+    properties: {
+      separateRegressionStep: {
+        type: 'boolean',
+        required: false,
       },
     },
   },
@@ -710,6 +817,12 @@ function validateConditionalRules(config, errors) {
   checkLocatorFrameworkConsistency(config, errors)
 }
 
+function requireField(errors, path, value, context) {
+  if (value === null || value === undefined || value === '') {
+    errors.push({ path, message: `is required when ${context}`, value: value ?? null })
+  }
+}
+
 /**
  * TMS: provider-specific fields required when provider is set.
  */
@@ -718,33 +831,34 @@ function checkTmsConditional(config, errors) {
   if (!provider) return
 
   if (provider === 'testrail') {
-    const projectId = config.outputs.tms.testrail?.projectId
-    const suiteId = config.outputs.tms.testrail?.suiteId
-    if (projectId === null || projectId === undefined) {
-      errors.push({
-        path: 'outputs.tms.testrail.projectId',
-        message: 'is required when TMS provider is "testrail"',
-        value: projectId ?? null,
-      })
-    }
-    if (suiteId === null || suiteId === undefined) {
-      errors.push({
-        path: 'outputs.tms.testrail.suiteId',
-        message: 'is required when TMS provider is "testrail"',
-        value: suiteId ?? null,
-      })
-    }
+    requireField(
+      errors,
+      'outputs.tms.testrail.projectId',
+      config.outputs.tms.testrail?.projectId,
+      'TMS provider is "testrail"',
+    )
+    requireField(
+      errors,
+      'outputs.tms.testrail.suiteId',
+      config.outputs.tms.testrail?.suiteId,
+      'TMS provider is "testrail"',
+    )
   }
-
   if (provider === 'qase') {
-    const projectCode = config.outputs.tms.qase?.projectCode
-    if (!projectCode) {
-      errors.push({
-        path: 'outputs.tms.qase.projectCode',
-        message: 'is required when TMS provider is "qase"',
-        value: projectCode ?? null,
-      })
-    }
+    requireField(
+      errors,
+      'outputs.tms.qase.projectCode',
+      config.outputs.tms.qase?.projectCode,
+      'TMS provider is "qase"',
+    )
+  }
+  if (provider === 'zephyr') {
+    requireField(
+      errors,
+      'outputs.tms.zephyr.projectKey',
+      config.outputs.tms.zephyr?.projectKey,
+      'TMS provider is "zephyr"',
+    )
   }
   // 'local' provider has no strict requirements — defaults apply
 }
@@ -757,33 +871,34 @@ function checkInputTmsConditional(config, errors) {
   if (!provider) return
 
   if (provider === 'testrail') {
-    const projectId = config.inputs.tms.testrail?.projectId
-    const suiteId = config.inputs.tms.testrail?.suiteId
-    if (projectId === null || projectId === undefined) {
-      errors.push({
-        path: 'inputs.tms.testrail.projectId',
-        message: 'is required when inputs TMS provider is "testrail"',
-        value: projectId ?? null,
-      })
-    }
-    if (suiteId === null || suiteId === undefined) {
-      errors.push({
-        path: 'inputs.tms.testrail.suiteId',
-        message: 'is required when inputs TMS provider is "testrail"',
-        value: suiteId ?? null,
-      })
-    }
+    requireField(
+      errors,
+      'inputs.tms.testrail.projectId',
+      config.inputs.tms.testrail?.projectId,
+      'inputs TMS provider is "testrail"',
+    )
+    requireField(
+      errors,
+      'inputs.tms.testrail.suiteId',
+      config.inputs.tms.testrail?.suiteId,
+      'inputs TMS provider is "testrail"',
+    )
   }
-
   if (provider === 'qase') {
-    const projectCode = config.inputs.tms.qase?.projectCode
-    if (!projectCode) {
-      errors.push({
-        path: 'inputs.tms.qase.projectCode',
-        message: 'is required when inputs TMS provider is "qase"',
-        value: projectCode ?? null,
-      })
-    }
+    requireField(
+      errors,
+      'inputs.tms.qase.projectCode',
+      config.inputs.tms.qase?.projectCode,
+      'inputs TMS provider is "qase"',
+    )
+  }
+  if (provider === 'zephyr') {
+    requireField(
+      errors,
+      'inputs.tms.zephyr.projectKey',
+      config.inputs.tms.zephyr?.projectKey,
+      'inputs TMS provider is "zephyr"',
+    )
   }
 }
 
@@ -842,11 +957,7 @@ function checkLocatorFrameworkConsistency(config, errors) {
 // Warning Collection
 // ---------------------------------------------------------------------------
 
-/**
- * Collect non-blocking warnings for config best practices.
- */
-function collectWarnings(config, warnings) {
-  // Non-standard testDir
+function warnNonStandardTestDir(config, warnings) {
   if (
     typeof config.project?.testDir === 'string' &&
     !COMMON_TEST_DIRS.includes(config.project.testDir)
@@ -857,32 +968,53 @@ function collectWarnings(config, warnings) {
       value: config.project.testDir,
     })
   }
+}
 
-  // Locator priority best practice: recommended first locator depends on framework
-  if (Array.isArray(config.preferences?.locatorPriority)) {
-    const priority = config.preferences.locatorPriority
-    const framework = config.e2e?.framework || config.outputs?.automation?.framework
-    if (priority.length > 0) {
-      const isCypress = framework === 'cypress'
-      const recommended = isCypress ? 'cy.findByTestId' : 'getByTestId'
-      if (priority[0] !== recommended) {
-        warnings.push({
-          path: 'preferences.locatorPriority',
-          message: `${recommended} is recommended as the first locator strategy for reliability`,
-          value: priority,
-        })
-      }
-    }
+function warnLocatorPriority(config, warnings) {
+  if (!Array.isArray(config.preferences?.locatorPriority)) return
+  const priority = config.preferences.locatorPriority
+  if (priority.length === 0) return
+  const framework = config.e2e?.framework || config.outputs?.automation?.framework
+  const recommended = framework === 'cypress' ? 'cy.findByTestId' : 'getByTestId'
+  if (priority[0] !== recommended) {
+    warnings.push({
+      path: 'preferences.locatorPriority',
+      message: `${recommended} is recommended as the first locator strategy for reliability`,
+      value: priority,
+    })
   }
+}
 
-  // High test multiplier
-  if (typeof config.preferences?.testMultiplier === 'number') {
-    if (config.preferences.testMultiplier > 10) {
-      warnings.push({
-        path: 'preferences.testMultiplier',
-        message: `value ${config.preferences.testMultiplier} may generate excessive tests (recommended: 1-10)`,
-        value: config.preferences.testMultiplier,
-      })
-    }
+function warnHighTestMultiplier(config, warnings) {
+  if (
+    typeof config.preferences?.testMultiplier === 'number' &&
+    config.preferences.testMultiplier > 10
+  ) {
+    warnings.push({
+      path: 'preferences.testMultiplier',
+      message: `value ${config.preferences.testMultiplier} may generate excessive tests (recommended: 1-10)`,
+      value: config.preferences.testMultiplier,
+    })
   }
+}
+
+function warnLowCoverageThreshold(config, warnings) {
+  const threshold = config.preferences?.coverageThreshold
+  if (typeof threshold === 'number' && threshold < 50 && threshold > 0) {
+    warnings.push({
+      path: 'preferences.coverageThreshold',
+      message: `value ${threshold}% is very low -- most projects benefit from at least 50% coverage threshold`,
+      value: threshold,
+    })
+  }
+}
+
+/**
+ * Collect non-blocking warnings for config best practices.
+ */
+function collectWarnings(config, warnings) {
+  warnNonStandardTestDir(config, warnings)
+  warnLocatorPriority(config, warnings)
+  warnHighTestMultiplier(config, warnings)
+  warnLowCoverageThreshold(config, warnings)
 }

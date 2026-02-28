@@ -124,7 +124,6 @@ function extractE2EContext(config) {
     steps: dirs.steps || 'e2e/steps',
     baseClass: config?.e2e?.baseClass || (isPW ? 'e2e/pages/base.page.ts' : ''),
     fixtureIndex: config?.e2e?.fixtureIndex || (isPW ? 'e2e/fixtures/index.ts' : ''),
-    regTag: config?.regression?.tagName || '@regression',
   }
 }
 
@@ -339,7 +338,7 @@ ${frameworkSection}${
     dimensions: ['test-data', 'error-handling'],
     levels: [0, 1, 2],
     generate(config) {
-      const { isPW, pages, specs, fixtures, regTag } = extractE2EContext(config)
+      const { isPW, pages, specs, fixtures } = extractE2EContext(config)
 
       return `# Modifying E2E Tests
 
@@ -387,10 +386,9 @@ ${
 - Each test MUST be independently runnable — no shared state between tests
 
 ## Regression Tests
-- Bug fixes: add test in \`${specs}/regression/\`
-- Tag: \`${regTag}\`
-- ID format: \`REG-{ticket}-{NNN}\`
-- One spec file per bug ticket
+- Bug fixes: append inline \`test.describe\` to the relevant feature spec in \`${specs}/\`
+- Use \`REG-{ticket}-{NNN}\` in the test title (e.g., \`REG-BUG-142-001\`)
+- Filter: \`npx playwright test --grep "REG-"\`
 `
     },
   },

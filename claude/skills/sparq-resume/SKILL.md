@@ -44,14 +44,12 @@ Resume a SparQ QA workflow from its exact interruption point using machine-reada
 
 Read `current-task.json` `phaseStatus` and determine recovery action per `resume-protocol.md`:
 
-| phaseStatus | Recovery |
-|-------------|----------|
-| `starting`, `agent_dispatched` | **Rerun phase** — re-dispatch same agent with full context |
-| `parallel_dispatched`, `parallel_collecting` | **Resume parallel** — read `parallel.json`, skip completed tasks, re-dispatch only pending/failed |
-| `merging` | **Resume merge** — read `parallel.json` merge steps, continue from last completed step |
-| `checkpoint_pending` | **Re-present checkpoint** — reconstruct from handoff data |
-| `checkpoint_approved`, `completing`, `completed` | **Advance to next phase** — load handoff, start next |
-| `failed` | **Handle failure** — present error, offer retry/skip/fresh-start |
+- `starting`, `agent_dispatched`: **Rerun phase** — re-dispatch same agent with full context
+- `parallel_dispatched`, `parallel_collecting`: **Resume parallel** — read `parallel.json`, skip completed tasks, re-dispatch only pending/failed
+- `merging`: **Resume merge** — read `parallel.json` merge steps, continue from last completed step
+- `checkpoint_pending`: **Re-present checkpoint** — reconstruct from handoff data
+- `checkpoint_approved`, `completing`, `completed`: **Advance to next phase** — load handoff, start next
+- `failed`: **Handle failure** — present error, offer retry/skip/fresh-start
 
 **For parallel recovery**: validate completed task handoffs exist on disk and referenced artifacts are intact. Mark tasks with missing handoffs for re-dispatch.
 

@@ -54,7 +54,16 @@ A requirement source (ticket ID, Confluence URL) is required. If only test files
    - **CHANGED-HIGH** -> suggest rewrite with before/after comparison, mark `// [SYNC] REVIEW`
    - **CHANGED-MEDIUM** -> update assertions/steps inline, mark `// [SYNC] UPDATED`
    - **CHANGED-LOW** -> add comment `// [SYNC] NOTE` (auto-applied if `refresh.autoApplyLowSeverity` is `true`)
-   - **REMOVED** -> mark `// [SYNC] DEPRECATED` (never auto-delete when `refresh.preserveDeprecated` is `true`)
+   - **REMOVED** -> **REMOVAL CHECKPOINT**: Before marking `// [SYNC] DEPRECATED` or deleting, present a numbered list of all tests targeted for removal/deprecation with:
+     - Test ID (e.g., TC-login-HP-003)
+     - Test title
+     - Linked requirement ID(s) that were removed
+     - Recommended action: DEPRECATE (mark comment) or DELETE (remove from file)
+     Wait for explicit user approval of each removal. User may approve all, approve selectively, or reject all.
+     When `refresh.preserveDeprecated` is `true`: default recommendation is DEPRECATE (never auto-delete).
+     When `refresh.preserveDeprecated` is `false`: default recommendation is DELETE, but still requires user confirmation.
+     Non-interactive mode (`preferences.interactiveMode: false`): auto-approve DEPRECATE actions only. DELETE actions always require explicit approval regardless of interactive mode.
+     After approval: mark approved items `// [SYNC] DEPRECATED` or remove from file per user choice
 7. **CHECKPOINT** -- Present proposed changes with before/after for each modified file. **Wait for approval.**
 8. Apply approved changes, run smoke verification (`npx playwright test --list` when `e2e.framework` is `playwright`), update coverage matrix, update test registry with new `lastRefreshedAt`, `requirementsHash`, and any new `testIds`
 
@@ -87,8 +96,9 @@ E2E files are updated directly in the project directory per `e2e.structure.*` co
 1. `sparq.config.json` read and validated; requirement sources and `e2e.structure.*` paths resolved
 2. Requirement diff analysis generated at `.sparq/refresh/REFRESH-{feature}-diff.md` with every requirement classified as NEW, CHANGED, REMOVED, or UNCHANGED
 3. Changes classified by severity (CHANGED-HIGH, CHANGED-MEDIUM, CHANGED-LOW) with corresponding sync markers applied (`// [SYNC] REVIEW`, `// [SYNC] UPDATED`, `// [SYNC] NOTE`)
-4. Updated test files pass smoke verify per `e2e.framework` (`npx playwright test --list` for Playwright, `npx cypress run --spec {path}` or `npx tsc --noEmit` for Cypress) without error
-5. Test registry (`.sparq/tracking/test-registry.json`) updated with current `lastRefreshedAt`, `requirementsHash`, and any new `testIds`
+4. All test removals/deprecations presented to user with explicit approval obtained before any deletion or deprecation marking (per `tms-abstraction.md` `<removal_policy>`)
+5. Updated test files pass smoke verify per `e2e.framework` (`npx playwright test --list` for Playwright, `npx cypress run --spec {path}` or `npx tsc --noEmit` for Cypress) without error
+6. Test registry (`.sparq/tracking/test-registry.json`) updated with current `lastRefreshedAt`, `requirementsHash`, and any new `testIds`
 </done_criteria>
 
 ## References
@@ -99,6 +109,8 @@ E2E files are updated directly in the project directory per `e2e.structure.*` co
 - `claude/skills/sparq-shared/references/parallel-execution.md`
 - `claude/skills/sparq-shared/references/degradation-strategy.md`
 - `claude/skills/sparq-shared/references/data-model.md` (TestRegistryEntry, RefreshDiff)
+- `claude/skills/sparq-qase-api/SKILL.md`
+- `claude/skills/sparq-testrail-api/SKILL.md`
 
 ## Examples
 

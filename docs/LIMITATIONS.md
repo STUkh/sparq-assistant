@@ -37,7 +37,7 @@ If all MCP servers are unavailable, SparQ still works with local files and user-
 
 ## Concurrency
 
-- **Single-user, single-session** -- SparQ is designed for one user running one session at a time within a Claude Code instance. Running multiple SparQ commands concurrently (e.g., in parallel terminals) may cause file conflicts in the `.sparq/` output directory.
+- **Single-user, single-session** -- SparQ is designed for one user running one session at a time within a single AI coding assistant session (Claude Code, Cursor, or Codex). Running multiple SparQ commands concurrently (e.g., in parallel terminals) may cause file conflicts in the `.sparq/` output directory.
 
 ## TMS Integration
 
@@ -83,7 +83,7 @@ If all MCP servers are unavailable, SparQ still works with local files and user-
 - **Single project focus** -- one feature per run; no cross-project dependency analysis
 - **English only** -- optimized for English; other languages may produce lower-quality output
 - **No visual regression** -- generates functional tests only; use Playwright visual comparisons, Percy, or Chromatic
-- **No performance testing** -- load/stress/benchmarks are out of scope
+- **Performance testing guidance only** -- `/sparq:performance` provides consulting on k6, Artillery, Lighthouse CI, and Web Vitals, but does not generate or execute performance tests directly
 - **UI framework selectors** -- auto-detected UI libraries (PrimeVue, Vuetify, Ant Design Vue, etc.) have tailored selector strategies; unrecognized libraries fall back to semantic selectors
 - **CI workflow templates** -- `--ci-provider` generates starter workflows for GitHub Actions, GitLab CI, and Azure Pipelines, but does not integrate with CI beyond template generation
 - **Regression tests** -- generates a single focused test per bug ticket; does not create comprehensive test suites from bug reports. Use Scenario 3 for full feature coverage.
@@ -118,5 +118,5 @@ If all MCP servers are unavailable, SparQ still works with local files and user-
 | Visual regression needed | Generate functional tests, add `expect(page).toHaveScreenshot()` manually |
 | S4 without MCP servers | S4 still runs ~60% of checks via codebase analysis; add Playwright MCP for full coverage |
 | Cypress project | Set `e2e.framework: "cypress"` in config; all scenarios generate Cypress code |
-| Bug needs regression test | `/sparq:regression BUG-142` or paste repro steps directly |
+| Bug needs regression test | `/sparq:generate-e2e BUG-142` — orchestrator auto-detects bug ticket, appends inline `REG-` test |
 | Renamed component in codebase | `/sparq:refactor --from "OldName" --to "NewName" e2e/` |

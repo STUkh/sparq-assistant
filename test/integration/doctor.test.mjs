@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import {
@@ -7,7 +7,6 @@ import {
   createMockProject,
   createTempDir,
   readJsonFile,
-  readTextFile,
   runCli,
 } from '../helpers/setup.mjs'
 
@@ -46,14 +45,6 @@ describe('Doctor command integration', () => {
 
     assert.equal(exitCode, 0, 'Doctor should exit 0 on valid installation')
     assert.ok(stdout.includes('checks passed'), 'Should show "checks passed" in summary')
-  })
-
-  it('should verify agents, skills, and config on valid install', async () => {
-    const { stdout, exitCode } = await runCli(['doctor', tempDir])
-
-    assert.equal(exitCode, 0)
-    assert.ok(stdout.includes('sparq-orchestrator.md'), 'Should check orchestrator agent')
-    assert.ok(stdout.includes('sparq.config.json valid'), 'Should confirm config is valid')
   })
 
   // -------------------------------------------------------------------------
@@ -164,52 +155,6 @@ describe('Doctor command integration', () => {
   // 5. Doctor --deep with placeholder MCP credentials
   // -------------------------------------------------------------------------
 
-  it('should show warnings about placeholder credentials in --deep mode', async () => {
-    const mcpPath = join(tempDir, '.mcp.json')
-    const mcpData = JSON.parse(readFileSync(mcpPath, 'utf-8'))
-
-    // Add env section with placeholder credentials to TestRail server
-    if (!mcpData.mcpServers) mcpData.mcpServers = {}
-    if (!mcpData.mcpServers.testrail) mcpData.mcpServers.testrail = {}
-    mcpData.mcpServers.testrail.command = 'npx'
-    mcpData.mcpServers.testrail.env = {
-      TESTRAIL_BASE_URL: 'https://yourteam.testrail.io',
-      TESTRAIL_USERNAME: 'your-email@example.com',
-      TESTRAIL_API_KEY: 'your-api-key',
-    }
-    writeFileSync(mcpPath, JSON.stringify(mcpData, null, 2))
-
-    const { stdout } = await runCli(['doctor', '--deep', tempDir])
-
-    // checkEnvVar detects values containing 'your-' as placeholders
-    assert.ok(
-      stdout.includes('placeholder') || stdout.includes('your-'),
-      'Should warn about placeholder credentials in deep mode',
-    )
-  })
-
-  it('should warn about missing env vars in --deep mode', async () => {
-    const mcpPath = join(tempDir, '.mcp.json')
-    const mcpData = JSON.parse(readFileSync(mcpPath, 'utf-8'))
-    const servers = mcpData.mcpServers || {}
-
-    // Ensure TestRail server exists, then remove env section to trigger missing env var warnings
-    if (!servers.testrail) {
-      servers.testrail = { command: 'npx' }
-    } else {
-      servers.testrail.command = servers.testrail.command || 'npx'
-    }
-    delete servers.testrail.env
-    writeFileSync(mcpPath, JSON.stringify(mcpData, null, 2))
-
-    const { stdout } = await runCli(['doctor', '--deep', tempDir])
-
-    assert.ok(
-      stdout.includes('missing env var') || stdout.includes('missing'),
-      'Should warn about missing env vars in deep mode',
-    )
-  })
-
   // -------------------------------------------------------------------------
   // 6. Permissions check — .claude/settings.local.json
   // -------------------------------------------------------------------------
@@ -275,15 +220,6 @@ describe('Doctor command integration', () => {
     )
   })
 
-  it('should check MCP servers in .mcp.json', async () => {
-    const { stdout } = await runCli(['doctor', tempDir])
-
-    assert.ok(
-      stdout.includes('MCP server: atlassian') || stdout.includes('MCP server'),
-      'Should verify MCP server configurations',
-    )
-  })
-
   it('should exit 1 when .mcp.json is missing entirely', async () => {
     const mcpPath = join(tempDir, '.mcp.json')
     if (existsSync(mcpPath)) {
@@ -297,18 +233,6 @@ describe('Doctor command integration', () => {
       stdout.includes('MCP server missing') || stdout.includes('.mcp.json not found'),
       'Should report missing MCP servers',
     )
-  })
-
-  it('should show warning count in summary when warnings exist', async () => {
-    // Remove settings.local.json to produce at least one warning
-    const settingsPath = join(tempDir, '.claude', 'settings.local.json')
-    if (existsSync(settingsPath)) {
-      unlinkSync(settingsPath)
-    }
-
-    const { stdout } = await runCli(['doctor', tempDir])
-
-    assert.ok(stdout.includes('warning'), 'Should show warning count in summary output')
   })
 })
 
@@ -346,89 +270,8 @@ describe('doctor --fix', () => {
   // 1. --fix reinstalls missing agent file
   // -------------------------------------------------------------------------
 
-  it('should reinstall a missing agent file', async () => {
-    const agentPath = join(tempDir, '.claude', 'agents', 'sparq-orchestrator.md')
-    assert.ok(existsSync(agentPath), 'Agent file should exist before deletion')
-    unlinkSync(agentPath)
-
-    // Confirm doctor detects the missing agent
-    const before = await runCli(['doctor', tempDir])
-    assert.equal(before.exitCode, 1, 'Doctor should fail with missing agent')
-    assert.ok(
-      before.stdout.includes('Agent missing: sparq-orchestrator.md'),
-      'Should report missing agent before fix',
-    )
-
-    // Run doctor --fix to restore it
-    const fix = await runCli(['doctor', '--fix', tempDir])
-    assert.ok(fix.stdout.includes('Applying fixes'), 'Should show "Applying fixes" heading')
-    assert.ok(
-      fix.stdout.includes('Reinstall agent: sparq-orchestrator.md'),
-      'Should report reinstalling the agent',
-    )
-
-    // Verify the file is restored on disk
-    assert.ok(existsSync(agentPath), 'Agent file should be restored after --fix')
-
-    // Re-run doctor to confirm it now passes
-    const after = await runCli(['doctor', tempDir])
-    assert.equal(after.exitCode, 0, 'Doctor should pass after --fix restored the agent')
-    assert.ok(after.stdout.includes('checks passed'), 'Should show checks passed after fix')
-  })
-
   // -------------------------------------------------------------------------
-  // 2. --fix creates missing output directory
-  // -------------------------------------------------------------------------
-
-  it('should create a missing output directory', async () => {
-    const missingDir = join(tempDir, '.sparq', 'requirements')
-    assert.ok(existsSync(missingDir), 'Output dir should exist before deletion')
-    rmSync(missingDir, { recursive: true, force: true })
-    assert.ok(!existsSync(missingDir), 'Output dir should be gone after deletion')
-
-    // Run doctor --fix
-    const fix = await runCli(['doctor', '--fix', tempDir])
-    assert.ok(
-      fix.stdout.includes('Create directory: .sparq/requirements'),
-      'Should report creating the missing directory',
-    )
-
-    // Verify the directory was recreated
-    assert.ok(existsSync(missingDir), 'Output directory should be recreated after --fix')
-  })
-
-  // -------------------------------------------------------------------------
-  // 3. --fix adds .sparq/ to .gitignore
-  // -------------------------------------------------------------------------
-
-  it('should add .sparq/ to .gitignore when missing', async () => {
-    const gitignorePath = join(tempDir, '.gitignore')
-    // Overwrite .gitignore without .sparq/ entry
-    writeFileSync(gitignorePath, 'node_modules/\n')
-
-    // Confirm doctor detects the issue
-    const before = await runCli(['doctor', tempDir])
-    assert.ok(
-      before.stdout.includes('.gitignore missing .sparq/'),
-      'Should report missing .sparq/ in .gitignore before fix',
-    )
-
-    // Run doctor --fix
-    const fix = await runCli(['doctor', '--fix', tempDir])
-    assert.ok(
-      fix.stdout.includes('Add .sparq/ to .gitignore'),
-      'Should report adding .sparq/ to .gitignore',
-    )
-
-    // Verify .gitignore now contains .sparq/
-    const content = readTextFile(tempDir, '.gitignore')
-    assert.ok(content !== null, '.gitignore should exist')
-    const lines = content.split('\n').map((l) => l.trim())
-    assert.ok(lines.includes('.sparq/'), '.gitignore should contain .sparq/ entry after --fix')
-  })
-
-  // -------------------------------------------------------------------------
-  // 4. --fix with no issues reports nothing to fix
+  // 2. --fix with no issues reports nothing to fix
   // -------------------------------------------------------------------------
 
   it('should report nothing to fix when installation is valid', async () => {

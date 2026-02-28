@@ -36,7 +36,7 @@ describe('Dry-run mode verification', () => {
   it('should display [dry-run] prefixed messages for each action', async () => {
     const { stdout } = await runCli(['init', '--non-interactive', '--dry-run', tempDir])
 
-    assert.ok(stdout.includes('[dry-run]'), 'Output should contain [dry-run] prefixed messages')
+    assert.ok(stdout.includes('[DRY-RUN]'), 'Output should contain [DRY-RUN] prefixed messages')
   })
 
   it('should NOT create .claude/ directory in dry-run mode', async () => {

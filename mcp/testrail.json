@@ -3,7 +3,7 @@
     "testrail": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@bun913/mcp-testrail@0.17.2"],
+      "args": ["-y", "@bun913/mcp-testrail"],
       "env": {
         "TESTRAIL_BASE_URL": "${TESTRAIL_BASE_URL}",
         "TESTRAIL_USERNAME": "${TESTRAIL_USERNAME}",

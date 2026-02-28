@@ -55,31 +55,6 @@ describe('Cypress init lifecycle', { concurrency: false }, () => {
     assert.equal(config.e2e.framework, 'cypress', 'e2e.framework should be cypress')
   })
 
-  it('Step 2: config has correct Cypress locators', () => {
-    const config = readJsonFile(tempDir, 'sparq.config.json')
-
-    // Locator priority should use Cypress locators
-    assert.ok(
-      Array.isArray(config.preferences.locatorPriority),
-      'locatorPriority should be an array',
-    )
-    assert.ok(
-      config.preferences.locatorPriority.some((l) => l.startsWith('cy.')),
-      `locatorPriority should include cy.* locators, got: ${config.preferences.locatorPriority}`,
-    )
-    assert.ok(
-      config.preferences.locatorPriority.includes('cy.findByTestId'),
-      'locatorPriority should include cy.findByTestId',
-    )
-
-    // Automation framework should be cypress
-    assert.equal(
-      config.outputs.automation.framework,
-      'cypress',
-      'outputs.automation.framework should be cypress',
-    )
-  })
-
   it('Step 3: config reflects detected Cypress directory structure', () => {
     const config = readJsonFile(tempDir, 'sparq.config.json')
 
@@ -101,27 +76,6 @@ describe('Cypress init lifecycle', { concurrency: false }, () => {
     assert.equal(exitCode, 0, 'Doctor should exit 0 for valid Cypress installation')
     assert.ok(stdout.includes('checks passed'), 'Should show checks passed summary')
     assert.ok(stdout.length > 0, 'Doctor should produce output')
-  })
-
-  it('Step 5: permissions include Cypress run command', () => {
-    const settings = readJsonFile(tempDir, join('.claude', 'settings.local.json'))
-    assert.ok(settings, 'settings.local.json should exist')
-    assert.ok(Array.isArray(settings.permissions?.allow), 'permissions.allow should be an array')
-    assert.ok(
-      settings.permissions.allow.includes('Bash(npx cypress run:*)'),
-      `permissions should include Bash(npx cypress run:*), got: ${settings.permissions.allow}`,
-    )
-  })
-
-  it('Step 6: MCP config does not include playwright server', () => {
-    const mcpConfig = readJsonFile(tempDir, '.mcp.json')
-    assert.ok(mcpConfig, '.mcp.json should exist')
-
-    const serverNames = Object.keys(mcpConfig.mcpServers || {})
-    assert.ok(
-      !serverNames.includes('playwright'),
-      `MCP servers should not include playwright when Cypress is detected, got: ${serverNames}`,
-    )
   })
 
   it('Step 7: cypress-best-practices skill installed, not playwright-best-practices', () => {

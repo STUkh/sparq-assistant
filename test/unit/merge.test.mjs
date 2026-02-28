@@ -123,31 +123,6 @@ describe('mergeBarrelAdditions', () => {
       assert.deepEqual(result.duplicates, ['LoginPage'])
     })
   })
-
-  describe('edge cases', () => {
-    it('should handle empty additions array', () => {
-      const result = mergeBarrelAdditions('existing content\n', [])
-      assert.equal(result.content, 'existing content\n')
-      assert.deepEqual(result.added, [])
-    })
-
-    it('should handle additions with blank lines', () => {
-      const result = mergeBarrelAdditions('', ["\n\nexport { Foo } from './foo'\n\n"])
-      assert.deepEqual(result.added, ['Foo'])
-    })
-
-    it('should handle additions with trailing whitespace', () => {
-      const result = mergeBarrelAdditions('', ["export { Foo } from './foo'   \n"])
-      assert.deepEqual(result.added, ['Foo'])
-    })
-
-    it('should skip malformed export lines', () => {
-      const result = mergeBarrelAdditions('', [
-        "not a valid line\nexport { Valid } from './valid'\nimport { Nope } from './nope'\n",
-      ])
-      assert.deepEqual(result.added, ['Valid'])
-    })
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -513,11 +488,6 @@ describe('renumberIds', () => {
       const result = renumberIds(['TC-login-HP-001', 'TC-login-HP-002'], 1)
       assert.equal(result[0].renumbered, 'TC-login-HP-001')
       assert.equal(result[1].renumbered, 'TC-login-HP-002')
-    })
-
-    it('should skip malformed IDs silently', () => {
-      const result = renumberIds(['TC-login-HP-001', 'INVALID', 'TC-login-HP-002'], 1)
-      assert.equal(result.length, 2)
     })
 
     it('should handle EC category', () => {

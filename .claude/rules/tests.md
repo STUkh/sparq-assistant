@@ -22,10 +22,14 @@ paths:
 - Unit tests must test individual functions in isolation
 - Assert exact exit codes from `bin/lib/constants.mjs` (`EXIT_SUCCESS`, `EXIT_GENERAL`, `EXIT_USAGE`, `EXIT_FILESYSTEM`)
 
-## Eval Framework (`test/evals/`)
-- **Cases**: YAML format with fields: `name`, `scenario`, `input`, `expected_outputs`, `rubrics`
-- **Case naming**: `s{N}-{short-description}.yaml` (e.g., `s1-generate-from-jira.yaml`, `s5-refresh-from-jira.yaml`). Always prefix with scenario number for sorting.
-- **Rubrics (code-based)**: Export `evaluate(content, checks)` returning `{score, maxScore, findings}`
-- **Rubrics (model-based)**: Markdown files with 1-5 grading scale and dimension definitions
-- **Fixtures**: Mock data in `test/evals/fixtures/` (e.g., Jira ticket JSON, Figma design JSON)
-- **Run**: `node test/evals/run-eval.mjs test/evals/cases/{case}.yaml`
+## Rubrics (`bin/lib/rubrics/`)
+- Export `evaluate(content, checks, options)` returning `{score, maxScore, findings, skipped?}`
+- `findings` array: `{ severity: 'critical'|'warning'|'info', message: string }` objects or plain strings
+- `skipped: true` when content is not a test file (use `isTestFile()` from `shared/content-detect.mjs`)
+- Shared utilities in `bin/lib/rubrics/shared/`: constants, content-detect, finding, json-extract
+- Register new rubrics in `FILE_RUBRICS` in `bin/lib/commands/lint.mjs`
+- Run via CLI: `sparq lint [path]` — reports findings with severity icons
+
+## Fixtures (`test/evals/fixtures/`)
+- Mock data corpus: Jira ticket JSON, Figma design JSON, project conventions — for manual prompt development/debugging
+- Cases reference docs in `test/evals/cases/` — serve as documentation of expected agent behaviors

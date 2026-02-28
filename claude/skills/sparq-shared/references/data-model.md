@@ -95,16 +95,18 @@ interface TestCase {
   tags: string[]                // e.g. ['smoke', 'regression', 'login']
   automationStatus: 'not_automated' | 'automatable' | 'automated' | 'not_automatable'
   estimate?: string             // Time estimate for TestRail (e.g., "5m", "15m", "1h")
+  tmsId?: string                // Written by /sparq:export after first CREATE. Format: "{provider}:{remoteId}" e.g. "testrail:5001" | "qase:301" | "zephyr:TC-PROJ-42". Used for UPDATE matching on subsequent exports. See tms-abstraction.md <tms_id_convention>.
 }
 ```
 
 - `priority`: Numeric for TMS compatibility (see "Requirement-to-TestCase Priority Mapping" above and `tms-abstraction.md`)
 - `type`: Maps to abbreviation for TC IDs (see "Test Category Naming" above)
 - `id`: Format `TC-{feature}-{ABBR}-{number}` using abbreviation from mapping
-- **Regression Test ID**: `REG-{ticket}-{NNN}` (e.g., `REG-BUG142-001`). Used for S6 regression tests. The `{ticket}` is the bug ticket ID with hyphens preserved.
+- **Regression Test ID**: `REG-{ticket}-{NNN}` (e.g., `REG-BUG142-001`). Used for S3 bug mode regression tests. The `{ticket}` is the bug ticket ID with hyphens preserved.
 - Regression tests use the same `TestCase` structure but with category `"REG"` and an additional `bugTicket: string` field containing the source bug ticket reference.
 - `automationStatus`: 4 values -- `'not_automated'` (no automation exists), `'automatable'` (can be automated, not yet done), `'automated'` (automation exists), `'not_automatable'` (requires manual testing only, e.g., subjective UX)
 - `estimate`: Optional time estimate, maps to TMS export fields (TestRail `<estimate>` in XML, Qase `estimate` in JSON)
+- `tmsId`: Optional, written automatically by `/sparq:export` after first successful CREATE. Never set manually. Format: `"{provider}:{remoteId}"`. Enables UPDATE matching on subsequent exports instead of creating duplicates. See `tms-abstraction.md` `<tms_id_convention>` and `<update_workflow>`.
 
 ## TestStep
 

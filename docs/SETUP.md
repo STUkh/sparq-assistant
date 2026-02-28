@@ -127,7 +127,7 @@ npx sparq-assistant init --features=e2e,jira,figma
 | `playwright-mcp` | Playwright browser automation via MCP server |
 | `qase` | Qase export via Qase MCP server |
 | `export` | Export skill for pushing artifacts to external systems |
-| `regression` | Bug regression test generation (S6) |
+| `e2e` | E2E test generation, validation, and sync (includes bug ticket regression via S3) |
 | `resume` | Workflow resume capability |
 
 **Presets:**
@@ -572,7 +572,6 @@ Sample output:
 [dry-run] Would create: .claude/skills/sparq-export/SKILL.md
 [dry-run] Would create: .claude/skills/sparq-resume/SKILL.md
 [dry-run] Would create: .claude/skills/sparq-init/SKILL.md
-[dry-run] Would create: .claude/skills/sparq-regression/SKILL.md
 [dry-run] Would create: .claude/skills/sparq-refactor/SKILL.md
 [dry-run] Would create: .claude/skills/sparq-shared/references/ (36 files)
 [dry-run] Would create: .claude/templates/ (11 files)

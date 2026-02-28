@@ -7,14 +7,14 @@
 | 1 | Manual Test Creation | `/sparq:generate-manual` | Jira ticket, Figma link, requirements text | Manual test cases (MD + XML), coverage matrix |
 | 1+2 | Generate (Unified) | `/sparq:generate` | Jira ticket, Figma link, requirements text | Manual test cases (MD + XML) AND E2E specs, page objects, fixtures |
 | 2 | Manual to E2E | `/sparq:manual-to-e2e` | Existing manual test cases (file or pasted) | E2E specs, page objects, step helpers |
-| 3 | E2E Test Generation | `/sparq:generate-e2e` | Jira ticket, Figma link, requirements text | E2E specs, page objects, fixtures |
+| 3 | E2E Test Generation | `/sparq:generate-e2e` | Feature ticket, bug ticket, PR diff, Figma link, requirements text | E2E specs, page objects, fixtures (bug tickets produce inline regression tests with `REG-` IDs) |
 | 4 | Test Validation | `/sparq:validate` | Path to existing test files | Validation report, auto-fixes |
 | 5 | Requirement Sync | `/sparq:sync` | Test files + requirement source (or test files with registry history) | Diff report, updated tests, registry update |
-| 6 | Bug Regression | `/sparq:regression` | Bug ticket ID, URL, or repro steps text | Focused regression test spec |
+| 6 | Publish Results | `/sparq:publish-results` | Playwright JSON or JUnit XML report | TMS test run with pass/fail results |
 
 Default entry is `/sparq:start`, which routes through:
 - `Generate` lane: manual-only, E2E-only, or unified generation
-- `Maintain` lane: validate, sync, regression, export
+- `Maintain` lane: validate, sync, export
 
 ## Decision Tree
 
@@ -22,26 +22,26 @@ The orchestrator classifies every request using this logic:
 
 ```mermaid
 flowchart TD
-  Start[User Request] --> Q0{Bug ticket or<br/>regression keywords?}
-  Q0 -->|Yes| S6[Scenario 6: Bug Regression]
-  Q0 -->|No| Q1{Manual test cases<br/>as input?}
+  Start[User Request] --> Q7{Publish results or<br/>test run upload?}
+  Q7 -->|Yes| S6[Scenario 6: Publish Results]
+  Q7 -->|No| Q1{Manual test cases<br/>as input?}
   Q1 -->|Yes| S2[Scenario 2: Manual to E2E]
   Q1 -->|No| Q2{Existing test files<br/>to sync?}
   Q2 -->|Yes| Q4{Requirement source<br/>provided or refresh intent?}
   Q4 -->|Yes| S5[Scenario 5: Requirement Sync]
   Q4 -->|No| S4[Scenario 4: Test Validation]
   Q2 -->|No| Q3{Asks for automated<br/>E2E tests?}
-  Q3 -->|Yes| S3[Scenario 3: E2E Test Generation]
+  Q3 -->|Yes| S3["Scenario 3: E2E Test Generation<br/>(feature tickets, bug tickets, PR diffs)"]
   Q3 -->|No| S1[Scenario 1: Manual Creation]
 ```
 
 **Classification signals:**
 
-- **Scenario 6** -- bug ticket ID with "regression", "bug", "repro", "BUG-" prefix, or `/sparq:regression` invocation
+- **Scenario 6** -- `/sparq:publish-results` invocation, or mentions of "publish results", "test run", "upload results" with a report file path
 - **Scenario 2** -- pasted test steps, file path to `.md`/`.xml` with test cases
 - **Scenario 5** -- existing test files + requirement source + words like "refresh", "update", "sync", "requirements changed", or `/sparq:sync` invocation
 - **Scenario 4** -- path to `e2e/` or `.spec.ts` files, words like "validate", "check", "stale" (no requirement source), or `/sparq:validate` invocation
-- **Scenario 3** -- words like "automate", "e2e", "automated tests", "playwright"
+- **Scenario 3** -- words like "automate", "e2e", "automated tests", "playwright"; also bug ticket IDs with "regression", "bug", "repro", "BUG-" prefix; also PR URLs, branch diffs
 - **Scenario 1** -- Jira ticket ID, feature name, "test cases", "QA checklist"
 
 ### Test Categories
@@ -369,46 +369,40 @@ Offers to run `/sparq:validate` for technical freshness check (selectors, flows)
 
 ---
 
-## Scenario 6: Bug Regression
+## Scenario 6: Publish Results
 
-**Skill:** `/sparq:regression`
+**Skill:** `/sparq:publish-results`
+
+Reads Playwright JSON or JUnit XML test output from a CI run, maps test titles to TC IDs, creates a test run in the configured TMS, and posts pass/fail/skip per matched test case.
 
 ### Input Examples
 
 ```
-/sparq:regression BUG-142
-/sparq:regression https://jira.example.com/browse/BUG-142
-/sparq:regression --verify BUG-142
-/sparq:regression "When clicking submit on empty form, page crashes instead of showing validation errors"
+/sparq:publish-results
+/sparq:publish-results playwright-report/results.json
+/sparq:publish-results test-results/junit.xml
 ```
 
 ### Phase Walkthrough
 
-**Phase 0 -- Classification**
-Orchestrator detects bug ticket or regression keywords, classifies as Scenario 6.
+**Step 1 -- Resolve TMS Provider**
+Reads `outputs.tms.provider` from `sparq.config.json`. If missing, asks which TMS to publish to (testrail / qase / zephyr).
 
-**Phase 0.5 -- Project Discovery**
-Scans `e2e/` for existing page objects and helpers the regression test can reuse.
+**Step 2 -- Locate and Parse Output**
+Checks standard output paths in order: `playwright-report/results.json`, `test-results/*.json`, `test-results/**/*.xml`, `cypress/results/**/*.xml`. Detects format (Playwright JSON vs JUnit XML) and parses all test results: title, status, duration, error message.
 
-**Phase 1 -- Bug Analysis**
-Parses bug ticket (via Jira MCP or user-provided text). Extracts: repro steps, expected vs actual behavior, affected component, severity level. Maps to existing page objects.
+**Step 3 -- Map TC IDs**
+Applies regex `TC-[A-Z0-9]+-[A-Z0-9]+-\d+` to each test title. Matched results are associated with their TC ID; unmatched results are grouped as "Untracked Tests".
 
-**Checkpoint 1: Test Strategy**
-Shows: bug summary, affected component, existing page objects available, proposed test file path, test approach. Blocks until approved.
+**Step 4 -- Create Run and Post Results**
+Creates a test run named `SparQ Results — {date} {branch}` in the TMS. Posts pass/fail/skip per matched test case using the appropriate MCP tool. Falls back to a local CSV at `.sparq/results/{date}-results.csv` if MCP is unavailable.
 
-**Phase 2 -- Regression Test Generation**
-Automation-engineer (in regression mode) generates a single focused spec file. Reuses existing page objects (extends with new methods if needed). Tags with `@regression`.
-
-**Checkpoint 2: Code Review**
-Shows generated regression test for review. User can request changes or approve.
-
-**Phase 3 -- Verify**
-Smoke verification. Optionally runs the test if `--verify` flag was provided.
+**Step 5 -- Report**
+Emits summary: provider, run URL (or CSV path), posted counts (passed/failed/skipped), and count of untracked tests.
 
 ### Output Files
 
-- `e2e/specs/regression/{TICKET-ID}.spec.ts` -- Regression test spec
-- `.sparq/plans/execution-plan.md` -- Execution tracking
+- TMS test run with results (via MCP) — or `.sparq/results/{date}-results.csv` (fallback)
 
 ---
 
@@ -438,11 +432,6 @@ flowchart LR
   S5[Scenario 5<br/>Requirement Sync] --> S4[Scenario 4<br/>Test Validation]
 ```
 
-```mermaid
-flowchart LR
-  S6[Scenario 6<br/>Bug Regression] --> S4[Scenario 4<br/>Test Validation]
-```
-
 ### Chaining Rules
 
 - Chained scenarios reuse the requirements document (no re-gathering)
@@ -452,18 +441,16 @@ flowchart LR
 - After Scenario 3: orchestrator offers Scenario 4 (Test Validation)
 - `/sparq:generate` runs S1 -> S2 automatically (no chain-offer prompt)
 - After Scenario 5: orchestrator offers Scenario 4 (Test Validation)
-- After Scenario 6: orchestrator offers Scenario 4 (broader test validation)
 
 ### Composability Matrix
 
-| From → To | S1 | S2 | S3 | S4 | S5 | S6 |
-|-----------|----|----|----|----|----|----|
-| **S1** | — | Offered | — | — | — | — |
-| **S2** | — | — | — | Offered | — | — |
-| **S3** | — | — | — | Offered | — | — |
-| **S4** | — | — | — | — | — | — |
-| **S5** | — | — | — | Offered | — | — |
-| **S6** | — | — | — | Offered | — | — |
+| From → To | S1 | S2 | S3 | S4 | S5 |
+|-----------|----|----|----|----|-----|
+| **S1** | — | Offered | — | — | — |
+| **S2** | — | — | — | Offered | — |
+| **S3** | — | — | — | Offered | — |
+| **S4** | — | — | — | — | — |
+| **S5** | — | — | — | Offered | — |
 
 **Rules**: S1→S2 is auto-chained in `/sparq:generate`. All other chains are offered (user can accept or decline). S4 is terminal (no further chain). Chained scenarios reuse requirements (no re-gathering). Each chain gets its own Phase 2 checkpoint.
 
@@ -534,6 +521,20 @@ Bulk rename selectors, imports, class names, and references across test files af
 ```
 
 Greps all test files in scope, shows occurrences with context, applies replacements after approval, runs smoke verification.
+
+### `sparq lint` (Post-Generation Quality Check)
+
+Runs deterministic rubrics on generated E2E test files — no AI inference, instant, CI-compatible. Offered automatically after code-generating scenarios (S2, S3, S1+S2).
+
+```bash
+npx sparq-assistant lint e2e/                       # full E2E directory
+npx sparq-assistant lint e2e/specs/auth/            # specific subdirectory
+npx sparq-assistant lint e2e/ --strict              # non-zero exit on critical findings
+```
+
+Rubrics: flaky pattern detection, locator quality, Playwright/Cypress syntax, assertion coverage, naming conventions, error handling, format compliance.
+
+**Complementary to `/sparq:validate`**: lint checks code patterns; `/sparq:validate` checks UI/selector drift against live codebase and Figma.
 
 ---
 

@@ -71,6 +71,10 @@ Explain each option with recommended use cases:
 - "**standard**: Skips Phase 1 (requirements) checkpoint when requirements are clean (no open questions, no gaps, no fallbacks). Still shows generation and final review. Best for: familiar users, straightforward tickets, single source."
 - "**fast**: Auto-approves all intermediate checkpoints. Only shows the final review with complete run summary. Best for: routine generation, trusted pipeline, batch processing."
 
+Also offer `batchApproval` toggle as a companion preference:
+- "**batchApproval** (on/off, default off): Plan-once, run-mostly-uninterrupted. Presents a comprehensive Phase 0 plan (all phases, test count estimates, agent assignments) → single approval → auto-approves intermediate checkpoints unless an agent fails, count shortfall >25%, token budget warning, or blocking question arises. Phase 3 final review always shown. Best for teams who want full plan visibility without approving every phase. Toggle? (on/off)"
+Update `preferences.batchApproval` in config accordingly.
+
 **Selection 4 — E2E Settings**
 
 Show detected vs configured values. Allow path changes for `e2e.structure.*`.

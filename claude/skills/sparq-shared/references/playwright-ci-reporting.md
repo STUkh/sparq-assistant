@@ -162,6 +162,24 @@ reporter: process.env.CI
 - CI: all formats for archival, dashboards, and CI integration
 - Local: HTML only -- opens with `npx playwright show-report`
 
+### Allure Reporter
+
+Allure is the industry-standard visual reporting layer for CI test results, providing history trends, screenshots, traces, and team dashboards. Install: `npm install --save-dev allure-playwright`.
+
+Include Allure alongside the HTML reporter to preserve local `npx playwright show-report` access:
+
+```typescript
+reporter: process.env.CI
+  ? [
+      ['allure-playwright', { detail: true, outputFolder: 'allure-results', suiteTitle: true }],
+      ['html', { open: 'never' }],
+      ['junit', { outputFile: 'test-results/junit.xml' }],
+    ]
+  : [['html']],
+```
+
+For full setup (history trends, GitHub Actions upload steps, artifact retention policy, test annotations): see `allure-patterns.md`.
+
 ### Trace, Video, and Screenshot Settings
 
 - `trace: 'on-first-retry'` -- captures only on failure retry; saves storage, preserves evidence

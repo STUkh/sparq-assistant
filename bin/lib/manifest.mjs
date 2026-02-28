@@ -62,6 +62,8 @@ export function writeManifest(targetDir, manifest) {
 
 /**
  * Read the existing manifest from .sparq/.manifest.json.
+ * Returns file hash entries plus optional `mcpServersAdded: string[]`
+ * (added by init/update to track which MCP servers SparQ installed).
  */
 export function readManifest(targetDir) {
   const manifestPath = join(targetDir, '.sparq', '.manifest.json')

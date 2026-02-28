@@ -2,7 +2,6 @@
 
 import { resolve } from 'node:path'
 import { parseArgs as nodeParseArgs } from 'node:util'
-import { warn } from './state.mjs'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -10,7 +9,13 @@ import { warn } from './state.mjs'
 
 function parseOlderThan(raw) {
   const n = Number(raw)
-  if (!Number.isFinite(n) || n <= 0) return null
+  if (!Number.isFinite(n) || n <= 0) {
+    if (raw != null)
+      console.error(
+        `Warning: Invalid --older-than value '${raw}' (must be a positive number), ignoring`,
+      )
+    return null
+  }
   return n
 }
 
@@ -29,54 +34,20 @@ const COMMANDS_WITH_TARGET_DIR = new Set([
   'clean',
   'doctor',
   'audit',
+  'lint',
+  'coverage',
 ])
 
-function resolveTargetDir(command, positionals, values) {
-  if (command === 'tune' && values?.project) {
-    return resolve(values.project)
-  }
+function resolveTargetDir(command, positionals) {
   const targetArg = COMMANDS_WITH_TARGET_DIR.has(command) ? positionals[1] : null
   return targetArg ? resolve(targetArg) : process.cwd()
 }
 
 function deriveCommandContext(command, positionals) {
-  const context = {
-    subcommand: null,
-    evalCaseName: null,
-    improveCaseName: null,
-    baselineAction: null,
-    baselineCaseName: null,
-    tier: null,
-  }
+  const context = { subcommand: null }
 
   if (command === 'help') {
     context.subcommand = positionals[1]?.toLowerCase()
-    return context
-  }
-
-  if (command === 'eval') {
-    context.evalCaseName = positionals[1]
-    context.subcommand = context.evalCaseName
-    return context
-  }
-
-  if (command === 'improve') {
-    context.improveCaseName = positionals[1]
-    context.subcommand = context.improveCaseName
-    return context
-  }
-
-  if (command === 'baseline') {
-    context.baselineAction = positionals[1]?.toLowerCase()
-    context.baselineCaseName = positionals[2]
-    context.subcommand = context.baselineAction
-    return context
-  }
-
-  if (command === 'tune') {
-    context.subcommand = positionals[1]?.toLowerCase()
-    context.tier = positionals[2]?.toLowerCase()
-    return context
   }
 
   return context
@@ -105,18 +76,80 @@ const KNOWN_OPTIONS = {
   only: { type: 'string' },
   skip: { type: 'string' },
   'ci-provider': { type: 'string' },
-  model: { type: 'string' },
-  yes: { type: 'boolean', default: false },
-  audit: { type: 'boolean', default: false },
-  trends: { type: 'boolean', default: false },
-  project: { type: 'string' },
   advanced: { type: 'boolean', default: false },
-  strict: { type: 'boolean', default: true },
-  'allow-skips': { type: 'boolean', default: false },
-  'no-clean': { type: 'boolean', default: false },
-  'artifact-root': { type: 'string' },
-  'max-iterations': { type: 'string' },
+  strict: { type: 'boolean', default: false },
+  threshold: { type: 'string' },
   json: { type: 'boolean', default: false },
+  'no-update-check': { type: 'boolean', default: false },
+  'no-color': { type: 'boolean', default: false },
+  workspace: { type: 'string' },
+  'all-workspaces': { type: 'boolean', default: false },
+  format: { type: 'string' },
+  'coverage-gate': { type: 'string' },
+}
+
+// ---------------------------------------------------------------------------
+// Per-Command Flag Validation
+// ---------------------------------------------------------------------------
+
+const GLOBAL_FLAGS = new Set(['quiet', 'verbose', 'help', 'version', 'no-update-check'])
+
+const COMMAND_FLAGS = Object.freeze({
+  init: new Set([
+    'non-interactive',
+    'ci',
+    'dry-run',
+    'force',
+    'features',
+    'ci-provider',
+    'defaults',
+    'workspace',
+    'all-workspaces',
+  ]),
+  update: new Set(['non-interactive', 'ci', 'dry-run', 'force', 'only', 'skip']),
+  uninstall: new Set(['non-interactive', 'ci', 'dry-run', 'force']),
+  clean: new Set(['non-interactive', 'ci', 'dry-run', 'force', 'all', 'type', 'older-than']),
+  doctor: new Set(['dry-run', 'deep', 'fix', 'workspace', 'all-workspaces']),
+  audit: new Set(['dry-run', 'fix', 'json', 'strict']),
+  lint: new Set(['strict', 'threshold', 'workspace', 'all-workspaces', 'format', 'coverage-gate']),
+  coverage: new Set(['format', 'threshold', 'workspace', 'quiet']),
+  help: new Set(['advanced']),
+})
+
+/**
+ * Levenshtein edit distance between two strings.
+ */
+function levenshtein(a, b) {
+  const m = a.length
+  const n = b.length
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1))
+  for (let i = 0; i <= m; i++) dp[i][0] = i
+  for (let j = 0; j <= n; j++) dp[0][j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+    }
+  }
+  return dp[m][n]
+}
+
+/**
+ * Suggest the closest valid flag for a mistyped one.
+ */
+function suggestFlag(flag, validFlags) {
+  let best = null
+  let bestDist = 4
+  for (const valid of validFlags) {
+    const dist = levenshtein(flag, valid)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = valid
+    }
+  }
+  return best
 }
 
 // ---------------------------------------------------------------------------
@@ -124,23 +157,47 @@ const KNOWN_OPTIONS = {
 // ---------------------------------------------------------------------------
 
 /**
- * Detect and warn about unknown flags in parsed tokens.
+ * Classify a single option token as valid or unknown.
+ * Returns an unknown-flag descriptor, or null if the flag is valid.
  */
-function warnUnknownFlags(tokens) {
+function classifyFlag(name, knownShort, knownLong, commandSet) {
+  if (name.length === 1) {
+    return knownShort.has(name) ? null : { name, short: true }
+  }
+  if (GLOBAL_FLAGS.has(name)) return null
+  if (commandSet) {
+    if (commandSet.has(name)) return null
+    const allValid = new Set([...GLOBAL_FLAGS, ...commandSet])
+    return { name, short: false, suggestion: suggestFlag(name, allValid) }
+  }
+  return knownLong.has(name) ? null : { name, short: false }
+}
+
+/**
+ * Validate flags against per-command allowlists.
+ * Returns an array of unknown flag names (empty if all valid).
+ */
+export function validateCommandFlags(tokens, command) {
   const knownLong = new Set(Object.keys(KNOWN_OPTIONS))
   const knownShort = new Set()
   for (const opts of Object.values(KNOWN_OPTIONS)) {
     if (opts.short) knownShort.add(opts.short)
   }
-  const warned = new Set()
+
+  const commandSet = COMMAND_FLAGS[command]
+  const unknown = []
+  const seen = new Set()
+
   for (const token of tokens) {
     if (token.kind !== 'option') continue
-    if (knownLong.has(token.name) || knownShort.has(token.name)) continue
-    if (warned.has(token.name)) continue
-    warned.add(token.name)
-    const prefix = token.name.length === 1 ? '-' : '--'
-    warn(`Unknown flag: ${prefix}${token.name} (ignored)`)
+    if (seen.has(token.name)) continue
+    seen.add(token.name)
+
+    const result = classifyFlag(token.name, knownShort, knownLong, commandSet)
+    if (result) unknown.push(result)
   }
+
+  return unknown
 }
 
 /**
@@ -155,20 +212,14 @@ export function parseArgs(argv) {
     tokens: true,
   })
 
-  warnUnknownFlags(tokens)
-
   const command = positionals[0]?.toLowerCase()
-  const targetDir = resolveTargetDir(command, positionals, values)
-  const { subcommand, evalCaseName, improveCaseName, baselineAction, baselineCaseName, tier } =
-    deriveCommandContext(command, positionals)
+  const unknownFlags = validateCommandFlags(tokens, command)
+  const targetDir = resolveTargetDir(command, positionals)
+  const { subcommand } = deriveCommandContext(command, positionals)
 
   return {
     command,
     subcommand,
-    evalCaseName,
-    improveCaseName,
-    baselineAction,
-    baselineCaseName,
     targetDir,
     nonInteractive: values['non-interactive'] || values.ci || !!process.env.CI,
     dryRun: values['dry-run'],
@@ -187,18 +238,16 @@ export function parseArgs(argv) {
     ciProvider: values['ci-provider'] || null,
     defaults: values.defaults,
     fix: values.fix,
-    model: values.model || null,
-    yes: values.yes,
-    audit: values.audit,
-    trends: values.trends,
-    project: values.project || null,
     advanced: values.advanced,
     strict: values.strict,
-    allowSkips: values['allow-skips'],
-    noClean: values['no-clean'],
-    artifactRoot: values['artifact-root'] || null,
-    maxIterations: values['max-iterations'] ? parseOlderThan(values['max-iterations']) : null,
+    threshold: values.threshold ?? null,
     json: values.json,
-    tier,
+    noUpdateCheck: values['no-update-check'],
+    noColor: values['no-color'],
+    workspace: values.workspace || null,
+    allWorkspaces: values['all-workspaces'],
+    format: values.format || null,
+    coverageGate: values['coverage-gate'] ?? null,
+    unknownFlags,
   }
 }

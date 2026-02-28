@@ -29,7 +29,8 @@ Config, version check, pattern rules, and E2E code generation preamble per `clau
 5. Apply approved replacements (deterministic find/replace -- no second checkpoint needed for the replacements themselves).
 6. Run smoke verification: `npx playwright test --list` (when `e2e.framework` is `playwright`) or `npx tsc --noEmit`.
 7. **CHECKPOINT** -- Present smoke verify results. If failures detected, show affected tests and offer rollback via `git checkout -- {files}`. **Wait for approval.**
-8. Write refactor report to `.sparq/validation/refactor-report.md`.
+8. **Optional lint check**: After smoke passes, offer `sparq lint {scope-directory}/` to verify renamed references follow code-quality rubrics (locator quality, naming conventions, flaky patterns). Confirms no structural regressions were introduced. Instant, CI-compatible.
+9. Write refactor report to `.sparq/validation/refactor-report.md`.
 
 **Delegation**: Routes to `sparq-test-validator` in refactor mode. The orchestrator adds `mode: "refactor"` and `refactorParams: { from, to, scope }` to the dispatch. This is an S4 variant, not a new scenario.
 

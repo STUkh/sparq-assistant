@@ -12,7 +12,9 @@ import {
   SPARQ_RULE_FILE,
 } from '../constants.mjs'
 import { confirm, listDirs, listFiles, toForwardSlash } from '../files.mjs'
+import { acquireLock, releaseLock } from '../lock.mjs'
 import { readManifest } from '../manifest.mjs'
+import { detectPlatforms, removeAgentsMd, removePlatformExtras } from '../platform.mjs'
 import { dryRun, emoji, heading, info, isDryRun, ok, warn } from '../state.mjs'
 
 // ---------------------------------------------------------------------------
@@ -307,6 +309,20 @@ function cleanupBackupFiles(targetDir) {
   return removed
 }
 
+/**
+ * Acquire the concurrency lock or emit an actionable error and return false.
+ * Returns true when in dry-run mode (lock not needed).
+ */
+function tryAcquireLock(targetDir) {
+  if (isDryRun()) return true
+  const lockResult = acquireLock(targetDir)
+  if (lockResult.acquired) return true
+  const age = lockResult.ageMs ? ` (running for ${Math.round(lockResult.ageMs / 1000)}s)` : ''
+  fail(`Another SparQ command is already running (PID ${lockResult.pid})${age}.`)
+  info('If this is stale, run: sparq clean --type lock')
+  return false
+}
+
 export async function cmdUninstall(targetDir, { force = false, nonInteractive = false } = {}) {
   heading(`${emoji.uninstall}SparQ QA Assistant — Uninstall`)
 
@@ -314,6 +330,11 @@ export async function cmdUninstall(targetDir, { force = false, nonInteractive = 
   if (!existsSync(claudeDir) && !existsSync(join(targetDir, 'sparq.config.json'))) {
     info('No SparQ installation found in this directory.')
     return
+  }
+
+  const stateDir = join(targetDir, '.sparq', 'state')
+  if (existsSync(stateDir)) {
+    warn('This will delete .sparq/state/ — any in-progress workflow state will be lost.')
   }
 
   if (!force && !nonInteractive && !isDryRun()) {
@@ -326,40 +347,58 @@ export async function cmdUninstall(targetDir, { force = false, nonInteractive = 
     }
   }
 
-  let removed = 0
-  removed += removeAgents(claudeDir)
-  removed += removeSkills(claudeDir, targetDir)
-  removed += removeTemplates(claudeDir, targetDir)
-  removed += removeRuleFile(claudeDir)
+  if (!tryAcquireLock(targetDir)) return
 
-  const configPath = join(targetDir, 'sparq.config.json')
-  if (existsSync(configPath)) {
-    dryRun(() => unlinkSync(configPath), `remove ${toForwardSlash(configPath)}`)
-    ok('Removed sparq.config.json')
-    removed++
+  try {
+    // Read manifest early — needed for selective MCP removal in both .mcp.json and platform configs
+    const manifest = readManifest(targetDir)
+    const mcpServersAdded = manifest?.mcpServersAdded || []
+    if (!manifest) {
+      warn('Manifest missing — MCP server cleanup may be incomplete. Check .mcp.json manually.')
+    }
+
+    let removed = 0
+    removed += removeAgents(claudeDir)
+    removed += removeSkills(claudeDir, targetDir)
+    removed += removeTemplates(claudeDir, targetDir)
+    removed += removeRuleFile(claudeDir)
+
+    const configPath = join(targetDir, 'sparq.config.json')
+    if (existsSync(configPath)) {
+      dryRun(() => unlinkSync(configPath), `remove ${toForwardSlash(configPath)}`)
+      ok('Removed sparq.config.json')
+      removed++
+    }
+
+    // Legacy CLAUDE.md block migration cleanup
+    removed += removeClaudeMdBlock(targetDir)
+    // Platform extras cleanup — detect from directory markers (reliable even after config removal)
+    removed += removePlatformExtras(targetDir, detectPlatforms(targetDir), mcpServersAdded)
+    removeAgentsMd(targetDir)
+
+    // MCP cleanup must happen before .sparq/ removal (reads manifest from .sparq/.manifest.json)
+    removed += removeMcpEntries(targetDir)
+    removed += removeGitignoreEntry(targetDir)
+    removed += cleanupBackupFiles(targetDir)
+
+    // Remove .sparq/ LAST — manifest lives here and is needed by earlier steps
+    // Note: this also removes the lock file; releaseLock() in finally handles ENOENT gracefully
+    const sparqDir = join(targetDir, '.sparq')
+    if (existsSync(sparqDir)) {
+      dryRun(
+        () => rmSync(sparqDir, { recursive: true, force: true }),
+        `remove directory ${toForwardSlash(sparqDir)}`,
+      )
+      ok('Removed .sparq/ directory')
+      removed++
+    }
+
+    // Clean up empty directories in .claude/
+    cleanEmptyDirs(claudeDir)
+
+    heading(`${emoji.complete}Uninstall complete — ${removed} item(s) removed`)
+    console.log()
+  } finally {
+    releaseLock(targetDir)
   }
-
-  // Legacy CLAUDE.md block migration cleanup
-  removed += removeClaudeMdBlock(targetDir)
-  // MCP cleanup must happen before .sparq/ removal (reads manifest from .sparq/.manifest.json)
-  removed += removeMcpEntries(targetDir)
-  removed += removeGitignoreEntry(targetDir)
-  removed += cleanupBackupFiles(targetDir)
-
-  // Remove .sparq/ LAST — manifest lives here and is needed by earlier steps
-  const sparqDir = join(targetDir, '.sparq')
-  if (existsSync(sparqDir)) {
-    dryRun(
-      () => rmSync(sparqDir, { recursive: true, force: true }),
-      `remove directory ${toForwardSlash(sparqDir)}`,
-    )
-    ok('Removed .sparq/ directory')
-    removed++
-  }
-
-  // Clean up empty directories in .claude/
-  cleanEmptyDirs(claudeDir)
-
-  heading(`${emoji.complete}Uninstall complete — ${removed} item(s) removed`)
-  console.log()
 }

@@ -23,6 +23,8 @@ Accept multiple ticket IDs: `/sparq:generate EP-142 EP-143 EP-144`
 - Auto-deduplicate: if two tickets share requirements (same REQ IDs), generate tests once and reference from both
 - Checkpoint level applies per-ticket (e.g., `fast` auto-approves P1/P2 for each ticket)
 
+> **Before E2E generation starts**: SparQ scans your codebase for components, routes, and test IDs. If your codebase is new or incomplete, you will be offered options (placeholder selectors, manual-only fallback, or defer) before any E2E code is generated. Manual test cases are always generated regardless of codebase readiness.
+
 1. If no `.sparq/requirements/REQ-{feature}.md` exists, run `/sparq:analyze` first
 2. **CHECKPOINT** -- Propose unified test plan: manual test categories with case counts, automatable vs manual-only split, priority distribution (P1/P2/P3/P4), E2E infrastructure needs (new page objects, fixtures), total manual cases, total E2E specs. **Wait for approval.**
 3. Delegate to `sparq-manual-test-writer` agent with delegation context:
@@ -42,7 +44,8 @@ Accept multiple ticket IDs: `/sparq:generate EP-142 EP-143 EP-144`
    For >30 tests: split into parallel batches per `parallel-execution.md` Pattern 2. For parallel batching (>30 tests), TC IDs are pre-assigned per `parallel-execution.md` Pattern 2 to prevent ID collisions.
 7. **CHECKPOINT** -- Present generated E2E code for review. **Wait for approval.**
 8. Phase 3: Smoke verify (`npx playwright test --list` or `npx tsc --noEmit`), present change summary, update coverage matrix, update test registry
-9. Optionally export to TMS/Jira/Confluence via `/sparq:export`
+9. **Optional lint check**: After smoke verify passes, offer `sparq lint {e2e-directory}/` to validate generated E2E files against 10 deterministic code-quality rubrics for test files (locator quality, flaky patterns, assertion coverage, naming conventions, and more). Instant, CI-compatible, zero model inference.
+10. Optionally export to TMS/Jira/Confluence via `/sparq:export`
 
 **Chain**: requirements-analyst (if needed) -> manual-test-writer -> automation-engineer -> export (optional)
 

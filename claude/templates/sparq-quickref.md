@@ -8,7 +8,7 @@
 | `/sparq:generate {ticket}` | Generate tests from Jira ticket |
 | `/sparq:validate {path}` | Check if tests match current UI |
 | `/sparq:sync {ticket}` | Update tests after requirement changes |
-| `/sparq:regression {bug}` | Create regression test for a bug |
+| `/sparq:generate-e2e {bug}` | Generate E2E tests — auto-detects bug tickets (inline `REG-` test) |
 | `/sparq:export` | Push tests to TestRail, Qase, or Jira |
 | `/sparq:config` | View or edit SparQ settings |
 

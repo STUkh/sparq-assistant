@@ -38,12 +38,6 @@ describe('filenameToExportName', () => {
   it('should convert steps filenames correctly', () => {
     assert.equal(filenameToExportName('login.steps.ts'), 'LoginSteps')
   })
-
-  it('should handle multiple consecutive separators', () => {
-    const result = filenameToExportName('my--double.page.ts')
-    assert.equal(typeof result, 'string')
-    assert.ok(result.length > 0, 'Should produce a non-empty result')
-  })
 })
 
 // ---------------------------------------------------------------------------

@@ -22,10 +22,18 @@ export const PKG_AGENTS_DIR = join(PKG_ROOT, 'claude', 'agents')
 export const PKG_SKILLS_DIR = join(PKG_ROOT, 'claude', 'skills')
 export const PKG_TEMPLATES_DIR = join(PKG_ROOT, 'claude', 'templates')
 export const PKG_MCP_DIR = join(PKG_ROOT, 'mcp')
+export const PKG_HOOKS_DIR = join(PKG_ROOT, 'claude', 'hooks')
 
 export const VERSION = JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf-8')).version
 
 export const SPARQ_HEADING = '## SparQ QA Assistant'
+
+export const SPARQ_LOGO = `   _____                  ____
+  / ___/____  ____ ______/ __ \\
+  \\__ \\/ __ \\/ __ \`/ ___/ / / /
+ ___/ / /_/ / /_/ / /  / /_/ /
+/____/ .___/\\__,_/_/   \\___\\_\\
+     /_/  Spar[QA]ssistant`
 
 export const AGENT_NAMES = Object.freeze([
   'sparq-automation-engineer.md',
@@ -34,6 +42,8 @@ export const AGENT_NAMES = Object.freeze([
   'sparq-requirements-analyst.md',
   'sparq-test-validator.md',
 ])
+
+export const HOOK_FILES = Object.freeze(['sparq-stop-guard.mjs', 'sparq-pre-compact.mjs'])
 
 export const SPARQ_OUTPUT_DIRS = Object.freeze([
   '.sparq/requirements',
@@ -65,18 +75,18 @@ export const SPARQ_RULE_CONTENT = [
 ].join('\n')
 
 /**
- * Build stack description lines from detected tech stack and E2E config.
+ * Build stack description lines from detected project config and E2E config.
  */
-function buildStackLines(techStack, e2eConfig) {
+function buildStackLines(projectConfig, e2eConfig) {
   const lines = []
-  if (techStack?.framework) {
-    const ver = techStack.frameworkVersion ? ` ${techStack.frameworkVersion}` : ''
-    const exts = techStack.componentFileExtensions?.join(', ') || ''
-    lines.push(`- Framework: ${techStack.framework}${ver} | Component files: ${exts}`)
+  if (projectConfig?.framework) {
+    const ver = projectConfig.frameworkVersion ? ` ${projectConfig.frameworkVersion}` : ''
+    const exts = projectConfig.componentFileExtensions?.join(', ') || ''
+    lines.push(`- Framework: ${projectConfig.framework}${ver} | Component files: ${exts}`)
   }
-  if (techStack?.sourceRoot || techStack?.routeDiscoveryPattern) {
-    const src = techStack.sourceRoot || 'src'
-    const route = techStack.routeDiscoveryPattern || '**/route*/**/*.ts'
+  if (projectConfig?.sourceRoot || projectConfig?.routeDiscoveryPattern) {
+    const src = projectConfig.sourceRoot || 'src'
+    const route = projectConfig.routeDiscoveryPattern || '**/route*/**/*.ts'
     lines.push(`- Source root: ${src}/ | Routes: ${route}`)
   }
   if (e2eConfig?.framework) {
@@ -97,14 +107,14 @@ function buildStackLines(techStack, e2eConfig) {
 }
 
 /**
- * Generate context-aware rule file content with detected project stack info.
+ * Generate context-aware rule file content with detected project config.
  * Falls back to SPARQ_RULE_CONTENT if no detection results are provided.
  */
-export function generateRuleContent(techStack, e2eConfig) {
-  if (!techStack && !e2eConfig) return SPARQ_RULE_CONTENT
+export function generateRuleContent(projectConfig, e2eConfig) {
+  if (!projectConfig && !e2eConfig) return SPARQ_RULE_CONTENT
 
   const lines = ['# SparQ QA Assistant', '', 'Config: `sparq.config.json` | Output: `.sparq/`']
-  const stackLines = buildStackLines(techStack, e2eConfig)
+  const stackLines = buildStackLines(projectConfig, e2eConfig)
 
   if (stackLines.length > 0) {
     lines.push('', '## Project Stack', ...stackLines)
@@ -132,10 +142,8 @@ export const COMMANDS = Object.freeze({
   clean: 'Remove stale artifacts from .sparq/ output directories',
   doctor: 'Verify installation — checks all files and configs',
   audit: 'Assess prompt maturity — check testing architecture\n            in project AI prompts',
-  eval: 'Run prompt evaluation cases — score agent outputs against rubrics',
-  improve: 'Run bounded improvement loop: eval strict -> improve status',
-  baseline: 'Promote baselines after strict pass streak policy',
-  tune: 'Optimize agent prompts for a model tier\n            (premium, balanced, economy)',
+  lint: 'Lint generated E2E test files — check for flaky patterns,\n            selector quality, and format compliance',
+  coverage: 'Compute requirement coverage from .sparq/ artifacts',
   help: 'Show this help message',
 })
 
@@ -156,36 +164,23 @@ export const MAX_RECURSION_DEPTH = 20
 export const MAX_MIGRATION_ITERATIONS = 100
 
 // ---------------------------------------------------------------------------
-// Model Tier Optimization
+// Workspace Support
 // ---------------------------------------------------------------------------
 
-export const MODEL_TIER_MAP = Object.freeze({
-  premium: Object.freeze({
-    orchestrator: 'opus',
-    'requirements-analyst': 'opus',
-    'manual-test-writer': 'sonnet',
-    'automation-engineer': 'opus',
-    'test-validator': 'sonnet',
-  }),
-  balanced: Object.freeze({
-    orchestrator: 'sonnet',
-    'requirements-analyst': 'sonnet',
-    'manual-test-writer': 'sonnet',
-    'automation-engineer': 'sonnet',
-    'test-validator': 'sonnet',
-  }),
-  economy: Object.freeze({
-    orchestrator: 'haiku',
-    'requirements-analyst': 'haiku',
-    'manual-test-writer': 'haiku',
-    'automation-engineer': 'haiku',
-    'test-validator': 'haiku',
-  }),
-})
+/**
+ * Workspace config files use the same filename as the root config.
+ * Each workspace directory may contain its own sparq.config.json
+ * that overrides root-level settings for that package.
+ */
+export const SPARQ_WORKSPACE_CONFIG_FILE = 'sparq.config.json'
 
-export const TUNE_BUDGET = Object.freeze({
-  layerOneMax: 30,
-  layerTwoMax: 80,
-  agentTotalMax: 450,
-  maxRefineRounds: 3,
-})
+// ---------------------------------------------------------------------------
+// Multi-Platform Support
+// ---------------------------------------------------------------------------
+
+// AGENTS.md sentinel markers for safe SparQ block update/removal
+export const AGENTS_MD_BLOCK_START = '<!-- sparq-agents-start -->'
+export const AGENTS_MD_BLOCK_END = '<!-- sparq-agents-end -->'
+
+// Default output path for SARIF lint results (relative to project root)
+export const SARIF_OUTPUT_PATH = '.sparq/lint-results.sarif'

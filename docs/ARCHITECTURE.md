@@ -18,6 +18,7 @@ flowchart TD
   TV --> PW
   Orch --> TR[TestRail MCP]
   Orch --> QA[Qase MCP]
+  Orch --> ZS[Zephyr Scale MCP]
 ```
 
 Data flows from user commands through the orchestrator, which dispatches work to specialized sub-agents. Each sub-agent connects to external services through MCP servers.
@@ -29,7 +30,7 @@ Data flows from user commands through the orchestrator, which dispatches work to
 | **sparq-orchestrator** | Classifies requests, coordinates phases, manages checkpoints | opus | Every request -- entry point |
 | **sparq-requirements-analyst** | Gathers from Jira, Confluence, Figma, local files | opus | Phase 1 of Scenarios 1, 3, and 5 |
 | **sparq-manual-test-writer** | Generates structured manual test cases (MD + XML) | sonnet | Phase 2 of Scenarios 1 and 5 (manual); support in 2 and 3 |
-| **sparq-automation-engineer** | Generates E2E test code (Playwright or Cypress) with POM pattern; regression mode for bug tickets | opus | Phase 2 of Scenarios 2, 3, 5 (E2E), 6 (regression); support in 4 |
+| **sparq-automation-engineer** | Generates E2E test code (Playwright or Cypress) with POM pattern; handles bug tickets as inline regression tests | opus | Phase 2 of Scenarios 2, 3, 5 (E2E); support in 4 |
 | **sparq-test-validator** | Validates tests against current requirements and UI | sonnet | Phase 1 of Scenarios 4 and 5; Phase 2 of Scenario 4; refactor mode |
 
 ## MCP Integration Map
@@ -42,8 +43,9 @@ Data flows from user commands through the orchestrator, which dispatches work to
 | **Playwright** | stdio | -- | -- | X | X | -- |
 | **TestRail** | stdio | -- | -- | -- | -- | X |
 | **Qase** | stdio | -- | -- | -- | -- | X |
+| **Zephyr Scale** | stdio | -- | -- | -- | -- | X |
 
-> **Note:** manual-test-writer has no direct MCP access — it consumes the structured requirements document produced by requirements-analyst. In regression mode (S6), automation-engineer receives bug ticket data via orchestrator handoff. test-validator reads local requirements docs and compares against Figma/Playwright for coverage checks but does not query Jira directly.
+> **Note:** manual-test-writer has no direct MCP access — it consumes the structured requirements document produced by requirements-analyst. For bug ticket inputs, automation-engineer receives bug ticket data via orchestrator handoff and appends regression tests inline to the relevant feature spec. test-validator reads local requirements docs and compares against Figma/Playwright for coverage checks but does not query Jira directly.
 
 **Connection details:**
 
@@ -52,17 +54,14 @@ Data flows from user commands through the orchestrator, which dispatches work to
 - **Playwright** -- `npx -y @playwright/mcp@latest` (stdio, local)
 - **TestRail** -- `npx -y @bun913/mcp-testrail` (stdio, env vars)
 - **Qase** -- `npx -y @qase/mcp-server` (stdio, env vars)
+- **Zephyr Scale** -- `npx -y @anthropic/zephyr-mcp` (stdio, env vars)
 
 ## Data Flow
 
 ```mermaid
 flowchart TD
   subgraph Sources
-    Jira[Jira ticket]
-    Conf[Confluence]
-    Figma[Figma design]
-    Local[Local files]
-    Text[User text]
+    Jira[Jira ticket] ~~~ Conf[Confluence] ~~~ Figma[Figma design] ~~~ Local[Local files] ~~~ Text[User text]
   end
 
   Discovery[Project Discovery<br/>e2e/ scan, config detection] --> TC
@@ -72,7 +71,7 @@ flowchart TD
   REQ --> Auto[e2e/ project directory<br/>pages · steps · specs · fixtures]
   REQ --> Cov[.sparq/coverage/<br/>coverage-matrix.md]
   REQ --> Refresh[.sparq/refresh/<br/>diff reports]
-  Sources -->|S6 bug ticket| Reg[e2e/specs/regression/<br/>REG-ticket.spec.ts]
+  Sources -->|S3 bug ticket| Reg[e2e/specs/{feature}.spec.ts<br/>REG-ticket inline append]
   Auto --> Registry[.sparq/tracking/<br/>test-registry.json]
   Registry -->|S5 Refresh| Refresh
   Refresh -->|approved changes| Auto
@@ -88,7 +87,7 @@ flowchart TD
 - **Coverage matrices** -- `.sparq/coverage/coverage-matrix.md`
 - **Validation reports** -- `.sparq/validation/validation-report.md`
 - **Refresh diffs** -- `.sparq/refresh/REFRESH-{feature}-diff.md`
-- **Regression tests** -- project `e2e/specs/regression/{ticket-id}.spec.ts`
+- **Regression tests** -- inline in relevant feature spec with `REG-{ticket}-{NNN}` in test title
 - **Test registry** -- `.sparq/tracking/test-registry.json`
 - **Run history** -- `.sparq/tracking/run-history.json` (workflow outcomes + flow metrics)
 - **Last run summary** -- `.sparq/last-run.md`
@@ -108,8 +107,8 @@ flowchart TD
 | `/sparq:sync` | orchestrator (requirement sync) | requirements-analyst + test-validator + automation-engineer or manual-test-writer |
 | `/sparq:export` | orchestrator (direct) | -- |
 | `/sparq:resume` | orchestrator (resume dispatch) | -- |
-| `/sparq:regression` | automation-engineer (regression mode) | requirements-analyst (Jira fetch if needed) |
 | `/sparq:refactor` | test-validator (refactor mode) | orchestrator (dispatch) |
+| `/sparq:publish-results` | orchestrator (direct) | -- |
 | `/sparq:init` | orchestrator (direct) | -- |
 
 ## Configuration
@@ -194,8 +193,7 @@ e2e/                           # E2E code (direct-write, per e2e.structure.* con
 ├── steps/                     # Reusable step helpers
 ├── fixtures/                  # Test fixtures
 ├── components/                # Component objects
-└── specs/                     # Playwright test specs
-    └── regression/            # Regression specs from S6 (tagged @regression)
+└── specs/                     # Playwright test specs (regression tests appended inline with REG- IDs)
 ```
 
 ## Glossary
@@ -204,7 +202,7 @@ e2e/                           # E2E code (direct-write, per e2e.structure.* con
 - **P0.5 (Project Discovery)**: Scan and summarize the target project's E2E infrastructure
 - **P1 (Requirements Gathering)**: Fetch requirements from Jira/Confluence/Figma/local sources
 - **P1.5 (Diff Analysis)**: S5 only -- compare current requirements against existing tests to categorize changes
-- **P1-P2 (Bug Regression)**: S6 only -- extract bug details from ticket, generate focused regression spec
+- **P1-P2 (Bug Regression)**: S3 bug ticket sub-mode -- extract bug details from ticket, generate inline regression test appended to feature spec
 - **P2 (Test Generation/Conversion/Validation)**: Core work phase -- generate tests, convert formats, or validate existing tests
 - **P3 (Verification, Registry & Export)**: Smoke verify, present changes for review, update test registry, export to external systems
 - **Checkpoint**: Explicit user approval gate between phases -- the orchestrator blocks until the user approves, rejects, or modifies the proposed plan
@@ -231,7 +229,7 @@ Each phase blocks until user approval. This prevents wasted compute on unwanted 
 
 ### Why MCP for External Integrations
 
-MCP provides standardized interfaces between Claude Code agents and external services:
+MCP provides standardized interfaces between AI coding assistant agents and external services:
 
 - **No credentials in agent code** -- MCP servers manage their own auth
 - **Graceful degradation** -- unavailable servers are skipped

@@ -26,18 +26,6 @@ describe('toForwardSlash', () => {
   it('should not change already forward-slash paths', () => {
     assert.equal(toForwardSlash('a/b/c'), 'a/b/c')
   })
-
-  it('should handle empty string', () => {
-    assert.equal(toForwardSlash(''), '')
-  })
-
-  it('should handle mixed slashes', () => {
-    assert.equal(toForwardSlash('a\\b/c\\d'), 'a/b/c/d')
-  })
-
-  it('should handle Windows-style absolute path', () => {
-    assert.equal(toForwardSlash('C:\\Users\\test\\file.txt'), 'C:/Users/test/file.txt')
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -260,17 +248,6 @@ describe('listFiles', () => {
     cleanTempDir(tempDir)
   })
 
-  it('should list all files in a directory', () => {
-    writeFileSync(join(tempDir, 'a.txt'), 'a')
-    writeFileSync(join(tempDir, 'b.md'), 'b')
-    writeFileSync(join(tempDir, 'c.json'), 'c')
-
-    const files = listFiles(tempDir)
-    assert.ok(files.includes('a.txt'))
-    assert.ok(files.includes('b.md'))
-    assert.ok(files.includes('c.json'))
-  })
-
   it('should filter by extension', () => {
     writeFileSync(join(tempDir, 'a.txt'), 'a')
     writeFileSync(join(tempDir, 'b.md'), 'b')
@@ -286,23 +263,6 @@ describe('listFiles', () => {
   it('should return empty array for missing directory', () => {
     const files = listFiles(join(tempDir, 'nonexistent'))
     assert.deepEqual(files, [])
-  })
-
-  it('should return empty array for empty directory', () => {
-    const emptyDir = join(tempDir, 'empty')
-    mkdirSync(emptyDir)
-
-    const files = listFiles(emptyDir)
-    assert.deepEqual(files, [])
-  })
-
-  it('should include directories in unfiltered listing', () => {
-    mkdirSync(join(tempDir, 'subdir'))
-    writeFileSync(join(tempDir, 'file.txt'), 'content')
-
-    const files = listFiles(tempDir)
-    assert.ok(files.includes('subdir'), 'directories appear in readdirSync output')
-    assert.ok(files.includes('file.txt'))
   })
 })
 

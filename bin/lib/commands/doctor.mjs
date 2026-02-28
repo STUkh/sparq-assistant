@@ -2,15 +2,11 @@
 
 import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import {
-  AGENT_NAMES,
-  MODEL_TIER_MAP,
-  PKG_AGENTS_DIR,
-  PKG_SKILLS_DIR,
-  SPARQ_OUTPUT_DIRS,
-} from '../constants.mjs'
+import { AGENT_NAMES, PKG_AGENTS_DIR, PKG_SKILLS_DIR, SPARQ_OUTPUT_DIRS } from '../constants.mjs'
 import { detectE2ESetup } from '../detect.mjs'
 import { listDirs } from '../files.mjs'
+import { checkHooks, installHooks } from '../hooks.mjs'
+import { checkPlatformExtras, detectPlatforms } from '../platform.mjs'
 import { deepValidateConfig } from '../schema.mjs'
 import { emoji, fail, heading, info, isDryRun, ok, style, warn } from '../state.mjs'
 
@@ -18,9 +14,6 @@ import { emoji, fail, heading, info, isDryRun, ok, style, warn } from '../state.
 // Command: doctor (#3 fix exit code)
 // ---------------------------------------------------------------------------
 
-/**
- * Check MCP server configuration.
- */
 /**
  * Read e2e.framework from sparq.config.json (defaults to 'playwright').
  */
@@ -51,6 +44,7 @@ function getRequiredServers(targetDir) {
     if (config.sources?.figma?.enabled) servers.push('figma')
     if (config.outputs?.tms?.provider === 'testrail') servers.push('testrail')
     if (config.outputs?.tms?.provider === 'qase') servers.push('qase')
+    if (config.outputs?.tms?.provider === 'zephyr') servers.push('zephyr')
     return servers
   } catch {
     return ['playwright']
@@ -116,6 +110,7 @@ function checkConfig(targetDir, ctx) {
   }
 
   checkConfigE2E(targetDir, configData, ctx)
+  checkConfigViewports(configData, ctx)
 }
 
 /**
@@ -134,8 +129,25 @@ function checkConfigE2E(targetDir, configData, ctx) {
   ctx.warnCheck(
     currentE2e.framework === configData.e2e.framework,
     `E2E framework matches config (${configData.e2e.framework})`,
-    `E2E framework mismatch: config says ${configData.e2e.framework}, found ${currentE2e.framework || 'none'}`,
+    `E2E framework mismatch: config says ${configData.e2e.framework}, found ${currentE2e.framework || 'none'} — run \`sparq update\` to reconfigure or edit sparq.config.json`,
   )
+}
+
+/**
+ * Check viewport config section.
+ */
+function checkConfigViewports(configData, ctx) {
+  const viewports = configData.viewports
+  if (!viewports) return
+  if (viewports.enabled === true) {
+    const hasPresets = Array.isArray(viewports.presets) && viewports.presets.length > 0
+    const hasCustom = Array.isArray(viewports.custom) && viewports.custom.length > 0
+    ctx.warnCheck(
+      hasPresets || hasCustom,
+      'Viewport presets configured',
+      'viewports.enabled is true but no presets or custom viewports defined',
+    )
+  }
 }
 
 /**
@@ -236,6 +248,14 @@ const MCP_SERVER_CHECKS = {
     type: 'command',
     requiredEnv: ['QASE_API_TOKEN'],
   },
+  zephyr: {
+    type: 'command',
+    // ZEPHYR_API_TOKEN + JIRA_PROJECT_KEY are the two env vars mcp-zephyr-scale reads.
+    // JIRA_PROJECT_KEY maps from the user's ZEPHYR_PROJECT_KEY at the MCP config boundary.
+    // ZEPHYR_BASE_URL is not supported by the MCP package (Cloud URL is hardcoded in the
+    // zephyr-api-client dep); it belongs in the shell env only for the L2 REST fallback.
+    requiredEnv: ['ZEPHYR_API_TOKEN', 'JIRA_PROJECT_KEY'],
+  },
 }
 
 /**
@@ -282,7 +302,7 @@ function checkEnvVar(name, envVar, envSection, ctx) {
   const hasEnv = envVar in envSection
   if (!hasEnv) {
     warn(`${name}: missing env var ${envVar}`)
-    info('  See docs/SETUP.md "MCP Server Configuration" for credential setup.')
+    info(`  Add ${envVar} to the "${name}" server's "env" section in .mcp.json`)
     ctx.warnings++
     return
   }
@@ -294,7 +314,7 @@ function checkEnvVar(name, envVar, envSection, ctx) {
 
   if (isPlaceholder) {
     warn(`${name}: ${envVar} appears to be a placeholder — update with real credentials`)
-    info('  See docs/SETUP.md "MCP Server Configuration" for credential setup.')
+    info(`  Replace the placeholder value for ${envVar} in .mcp.json with your actual credential`)
     ctx.warnings++
   } else {
     ok(`${name}: ${envVar} configured`)
@@ -545,6 +565,11 @@ async function applySingleFix(fix) {
       ok(fix.label)
       return true
     }
+    case 'install-hooks': {
+      installHooks(fix.targetDir, { update: true })
+      ok(fix.label)
+      return true
+    }
     default:
       warn(`Unknown fix type: ${fix.type}`)
       return false
@@ -576,72 +601,89 @@ async function applyFixes(ctx) {
 }
 
 /**
- * Check that agent model: fields match the configured preferences.modelTier.
+ * Check hooks health and report issues to doctor context.
  */
-function checkModelTier(targetDir, ctx) {
-  const configPath = join(targetDir, 'sparq.config.json')
-  if (!existsSync(configPath)) return
-
-  let config
-  try {
-    config = JSON.parse(readFileSync(configPath, 'utf-8'))
-  } catch {
+function checkHooksHealth(effectiveDir, ctx) {
+  const hookResult = checkHooks(effectiveDir)
+  if (hookResult.ok) {
+    ctx.check(true, 'Hook scripts installed and configured')
     return
   }
+  for (const issue of hookResult.issues) {
+    ctx.warnCheck(false, '', issue, {
+      type: 'install-hooks',
+      targetDir: effectiveDir,
+      label: 'Install hook scripts',
+    })
+  }
+}
 
-  const tier = config.preferences?.modelTier || 'premium'
-  const tierMap = MODEL_TIER_MAP[tier]
-  if (!tierMap) return
-
-  const agentsDir = join(targetDir, '.claude', 'agents')
-  for (const filename of AGENT_NAMES) {
-    const filePath = join(agentsDir, filename)
-    if (!existsSync(filePath)) continue
-
-    const content = readFileSync(filePath, 'utf-8')
-    const match = content.match(/^---\n[\s\S]*?model:\s*(\S+)[\s\S]*?\n---/)
-    if (!match) continue
-
-    const actualModel = match[1]
-    const shortName = filename.replace(/^sparq-/, '').replace(/\.md$/, '')
-    const expectedModel = tierMap[shortName]
-    if (!expectedModel) continue
-
-    ctx.warnCheck(
-      actualModel === expectedModel,
-      `${filename}: model matches ${tier} tier (${expectedModel})`,
-      `${filename}: model mismatch — expected ${expectedModel} (${tier} tier), found ${actualModel}. Run \`npx sparq-assistant tune apply ${tier}\``,
-    )
+/**
+ * Check platform extras health and report issues to doctor context.
+ */
+function checkPlatformHealth(effectiveDir, ctx) {
+  const platforms = detectPlatforms(effectiveDir)
+  const label = platforms.length > 0 ? platforms.join(', ') : 'claude'
+  console.log(`\n${style.bold(`${emoji.config}Platform (${label}):`)}`)
+  const platformResult = checkPlatformExtras(effectiveDir, platforms)
+  if (platformResult.ok) {
+    ok('Platform extras OK')
+    return
+  }
+  for (const issue of platformResult.issues) {
+    ctx.warnCheck(false, '', issue)
   }
 }
 
 export async function cmdDoctor(targetDir, options = {}) {
-  heading(`${emoji.doctor}SparQ QA Assistant — Doctor`)
+  // When --workspace is given, check the workspace subdirectory but note it
+  const workspacePath = options.workspace ? join(targetDir, options.workspace) : null
+  const effectiveDir = workspacePath ?? targetDir
+
+  if (workspacePath) {
+    heading(`${emoji.doctor}SparQ QA Assistant — Doctor (workspace: ${options.workspace})`)
+  } else {
+    heading(`${emoji.doctor}SparQ QA Assistant — Doctor`)
+  }
 
   const ctx = createDoctorContext()
 
-  const claudeDir = join(targetDir, '.claude')
+  // Node.js version check
+  const nodeMajor = parseInt(process.versions.node, 10)
+  ctx.check(
+    nodeMajor >= 22,
+    `Node.js version ${process.versions.node} (>= 22 required)`,
+    `Node.js ${process.versions.node} is below minimum v22 — upgrade Node.js`,
+  )
+
+  const claudeDir = join(effectiveDir, '.claude')
   ctx.check(
     existsSync(claudeDir),
     '.claude/ directory exists',
     '.claude/ directory not found — run `npx sparq-assistant init`',
   )
 
-  checkAgents(targetDir, ctx)
-  checkSkills(targetDir, ctx)
-  checkMcpServers(targetDir, ctx)
-  checkConfig(targetDir, ctx)
-  checkModelTier(targetDir, ctx)
-  checkE2ESetup(targetDir, ctx)
-  checkOutputDirs(targetDir, ctx)
-  checkGitignore(targetDir, ctx)
-  checkPermissions(targetDir, ctx)
+  checkAgents(effectiveDir, ctx)
+  checkSkills(effectiveDir, ctx)
+  checkMcpServers(effectiveDir, ctx)
+  checkConfig(effectiveDir, ctx)
+  checkE2ESetup(effectiveDir, ctx)
+  checkOutputDirs(effectiveDir, ctx)
+  checkGitignore(effectiveDir, ctx)
+  checkPermissions(effectiveDir, ctx)
+
+  checkHooksHealth(effectiveDir, ctx)
+  checkPlatformHealth(effectiveDir, ctx)
 
   if (options.deep) {
-    checkMcpHealth(targetDir, ctx)
+    checkMcpHealth(effectiveDir, ctx)
   }
 
   displaySummary(ctx, options)
+
+  if (workspacePath) {
+    console.log(`  ${style.dim(`Workspace checked: ${options.workspace}`)}`)
+  }
 
   if (ctx.fixes.length > 0 && options.fix) {
     await applyFixes(ctx)

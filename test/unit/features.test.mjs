@@ -386,24 +386,10 @@ describe('getSkillsForFeatures', () => {
     assert.equal(exportCount, 1, 'sparq-export should appear exactly once')
   })
 
-  it('should include optimize skill for dev-tools feature', () => {
+  it('should include analyze skill for dev-tools feature', () => {
     const features = resolveFeatures(['dev-tools'])
     const skills = getSkillsForFeatures(features)
-    assert.ok(skills.includes('sparq-optimize'), 'should include sparq-optimize skill')
-  })
-
-  it('should include lean eval flow skills for dev-tools feature', () => {
-    const features = resolveFeatures(['dev-tools'])
-    const skills = getSkillsForFeatures(features)
-    assert.ok(skills.includes('sparq-eval'), 'should include sparq-eval')
-    assert.ok(skills.includes('sparq-improve'), 'should include sparq-improve')
-    assert.ok(skills.includes('sparq-baseline-promote'), 'should include sparq-baseline-promote')
-  })
-
-  it('should include audit-prompts skill for dev-tools feature', () => {
-    const features = resolveFeatures(['dev-tools'])
-    const skills = getSkillsForFeatures(features)
-    assert.ok(skills.includes('sparq-audit-prompts'), 'should include sparq-audit-prompts skill')
+    assert.ok(skills.includes('sparq-analyze'), 'should include sparq-analyze skill')
   })
 })
 
@@ -455,15 +441,16 @@ describe('getMcpServersForFeatures', () => {
     assert.deepEqual(servers, ['playwright'])
   })
 
-  it('should return all 5 servers for all features', () => {
+  it('should return all 6 servers for all features', () => {
     const features = resolveFeatures(['all'])
     const servers = getMcpServersForFeatures(features)
     assert.ok(servers.includes('atlassian'), 'should include atlassian')
     assert.ok(servers.includes('figma'), 'should include figma')
     assert.ok(servers.includes('testrail'), 'should include testrail')
     assert.ok(servers.includes('qase'), 'should include qase')
+    assert.ok(servers.includes('zephyr'), 'should include zephyr')
     assert.ok(servers.includes('playwright'), 'should include playwright')
-    assert.equal(servers.length, 5, 'should have exactly 5 unique servers')
+    assert.equal(servers.length, 6, 'should have exactly 6 unique servers')
   })
 
   it('should return qase server for qase feature', () => {

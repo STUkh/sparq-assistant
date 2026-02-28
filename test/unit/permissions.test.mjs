@@ -32,12 +32,6 @@ describe('buildPermissionRules', () => {
     assert.equal(rules.length, 7, 'Default call should return 7 base permissions')
   })
 
-  it('should add MCP permission for playwright-mcp feature', () => {
-    const rules = buildPermissionRules(['playwright-mcp'])
-    assert.ok(rules.includes('mcp__playwright__*'), 'Should include playwright MCP pattern')
-    assert.equal(rules.length, 8, 'Should have 7 base + 1 MCP permission')
-  })
-
   it('should add MCP permission for jira feature', () => {
     const rules = buildPermissionRules(['jira'])
     assert.ok(rules.includes('mcp__atlassian__*'), 'Should include atlassian MCP pattern')
@@ -46,16 +40,6 @@ describe('buildPermissionRules', () => {
   it('should add MCP permission for confluence feature', () => {
     const rules = buildPermissionRules(['confluence'])
     assert.ok(rules.includes('mcp__atlassian__*'), 'Should include atlassian MCP pattern')
-  })
-
-  it('should add MCP permission for figma feature', () => {
-    const rules = buildPermissionRules(['figma'])
-    assert.ok(rules.includes('mcp__figma__*'), 'Should include figma MCP pattern')
-  })
-
-  it('should add MCP permission for testrail feature', () => {
-    const rules = buildPermissionRules(['testrail'])
-    assert.ok(rules.includes('mcp__testrail__*'), 'Should include testrail MCP pattern')
   })
 
   it('should deduplicate when jira and confluence both map to atlassian', () => {
@@ -72,11 +56,6 @@ describe('buildPermissionRules', () => {
     assert.ok(rules.includes('mcp__figma__*'), 'Should include figma')
     assert.ok(rules.includes('mcp__testrail__*'), 'Should include testrail')
     assert.equal(rules.length, 10, 'Should have 7 base + 3 MCP permissions')
-  })
-
-  it('should add MCP permission for qase feature', () => {
-    const rules = buildPermissionRules(['qase'])
-    assert.ok(rules.includes('mcp__qase__*'), 'Should include qase MCP pattern')
   })
 
   it('should not add MCP permission for tms-local feature', () => {

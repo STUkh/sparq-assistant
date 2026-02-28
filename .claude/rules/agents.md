@@ -42,4 +42,4 @@ paths:
 - End with `<done_criteria>` (recency bias reinforces completion checklist)
 - Handoff sections list ONLY scenario-varying fields (counts, artifacts, instructions); full schema in `handoff-schema.md`
 - Reference canonical docs (`handoff-schema.md`, `validation-checklist.md`, `parallel-execution.md`) instead of restating content inline
-- Automated optimization: `/sparq:optimize` applies T1–T12 token-reduction techniques to agent files
+- Manual prompt optimization: apply T1–T12 token-reduction techniques from `/sparq:prompt-optimizations` when refining agent files

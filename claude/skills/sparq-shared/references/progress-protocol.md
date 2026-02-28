@@ -41,9 +41,10 @@ Human-readable workflow names (never show S-codes to users):
 - S1+S2 → "Generate manual test cases + E2E tests"
 - S2 → "Convert manual tests to E2E tests"
 - S3 → "Generate E2E tests"
+- S3 bug mode → "Generate regression test for bug fix"
 - S4 → "Validate existing tests for UI drift"
 - S5 → "Sync tests with updated requirements"
-- S6 → "Create regression test for bug fix"
+- S6 → "Publish test results to TMS"
 
 ## Agent Milestone (all agents, RECOMMENDED)
 
@@ -93,6 +94,22 @@ Emitted when Playwright MCP captures a screenshot for user context.
 
 - Preview: `[sparq] {phase} Preview: {page description} -- screenshot captured`
 
+## Re-Anchor (all agents except requirements-analyst, CONDITIONAL)
+
+Emitted when context-anchoring protocol triggers a mid-task re-read. Only when work item count meets threshold per `context-anchoring.md`.
+
+- Re-anchor: `[sparq]   Re-anchor: {what was refreshed} after {N} {items} generated`
+- Drift detected: `[sparq]   Drift detected: {indicator} -- correcting`
+- Drift resolved: `[sparq]   Re-anchor: corrected {indicator}, resuming generation`
+
+## Completion Verification (orchestrator only, CONDITIONAL)
+
+Emitted when orchestrator validates handoff counts against dispatch contract per `completion-verification.md`.
+
+- Completion: `[sparq] {phase} Completion: {delivered}/{expected} {type}`
+- Shortfall: `[sparq] {phase} Completion shortfall: {delivered}/{expected} -- re-dispatching remaining {N}`
+- Phase gate: `[sparq] {phase} Phase gate: {delivered}/{expected} -- {passed|shortfall}`
+
 </signal_types>
 
 <phase_summaries>
@@ -134,6 +151,11 @@ Rules:
 - `[2/3] E2E Code`: spec files, page objects, step classes
 - `[3/3] Verification`: smoke result, files created, coverage percentage
 
+S3 sub-mode signals:
+- Bug mode: `[sparq] Bug ticket detected — analyzing repro steps...`
+- Bug mode: `[sparq] Finding closest feature spec for {affectedComponent}...`
+- Bug mode: `[sparq] Appending regression test to {targetFile}...`
+
 **S4 (Validate existing tests) -- 2 phases**
 - `[1/2] Scan Tests`: files scanned, findings count, severity breakdown
 - `[2/2] Report & Fix`: fixes applied, remaining warnings, smoke result
@@ -143,9 +165,9 @@ Rules:
 - `[2/3] Diff Analysis`: changes to apply, affected test files, severity breakdown
 - `[3/3] Apply Updates`: tests updated, new tests, deprecated tests, smoke result
 
-**S6 (Create regression test) -- 2 phases**
-- `[1/2] Parse Bug`: repro steps extracted, affected component, existing page objects found
-- `[2/2] Generate Regression`: spec file path, assertions count, smoke result
+**S6 (Publish test results) -- 2 phases**
+- `[1/2] Parse Results`: test output located, format detected, TC IDs extracted
+- `[2/2] Publish`: TMS run created, results posted, summary reported
 
 </phase_summaries>
 
@@ -162,6 +184,7 @@ Rules:
 - Workflow: complete with final summary and next-step suggestions
 - Resume: detection, staleness check, resume/fresh-start decision
 - Post-workflow: run summary with files, coverage, and next steps
+- Completion verification: handoff count validation, phase gate checks, re-dispatch on shortfall
 
 ### sparq-requirements-analyst
 - Per-source fetch: one signal per source with position (Source 1/3: Jira, Source 2/3: Confluence)
@@ -173,6 +196,7 @@ Rules:
 - Per-category complete: with position (Category 1/5: Happy Path, Category 2/5: Validation & Error)
 - Coverage matrix: after generation with coverage percentage
 - S5 refresh summary: counts of new/updated/deprecated tests
+- Re-anchor: pattern refresh at category transitions (conditional, >= 15 test cases)
 
 ### sparq-automation-engineer
 - Convention confirmation: after reading project patterns
@@ -180,12 +204,14 @@ Rules:
 - Smoke verification: pass/fail result of test listing or type check
 - Selector coverage: matched/total ratio for requirement elements vs codebase selectors
 - S5 refresh summary: counts of new/updated/deprecated tests
+- Re-anchor: pattern verification after every 5th spec (conditional, >= 10 test cases)
 
 ### sparq-test-validator
 - File inventory: after cataloging test files with counts
 - Per-check category: with position (Check 1/6: Selectors, Check 2/6: Flow)
 - Validation summary: total findings with severity breakdown
 - S5 traceability: after extracting test-to-requirement map
+- Re-anchor: severity recalibration after every 10th finding (conditional, >= 10 test files)
 
 </milestone_catalog>
 

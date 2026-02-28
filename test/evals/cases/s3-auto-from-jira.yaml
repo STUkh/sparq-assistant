@@ -20,6 +20,7 @@ expected_outputs:
   - path: ".sparq/handoff.json"
     checks:
       - has_pattern: '"scenario"\s*:\s*"S3"'
+      - has_pattern: '"inputType"\s*:\s*"feature"'
       - has_pattern: '"status"\s*:\s*"success"'
 rubrics:
   - playwright-syntax

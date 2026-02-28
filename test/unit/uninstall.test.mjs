@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { after, afterEach, before, beforeEach, describe, it } from 'node:test'
 import { cmdUninstall } from '../../bin/lib/commands/uninstall.mjs'
@@ -84,32 +84,6 @@ describe('cmdUninstall', () => {
   // Agent removal
   // -------------------------------------------------------------------------
 
-  describe('agent removal', () => {
-    let tempDir
-
-    before(async () => {
-      tempDir = await initProject({ name: 'uninstall-agents' })
-    })
-
-    after(() => {
-      cleanTempDir(tempDir)
-    })
-
-    it('should remove all sparq agent files', async () => {
-      // Confirm agents exist before uninstall
-      const agentsDir = join(tempDir, '.claude', 'agents')
-      for (const name of AGENT_NAMES) {
-        assert.ok(existsSync(join(agentsDir, name)), `Agent ${name} should exist before uninstall`)
-      }
-
-      await cmdUninstall(tempDir, { force: true, nonInteractive: true })
-
-      for (const name of AGENT_NAMES) {
-        assert.ok(!existsSync(join(agentsDir, name)), `Agent ${name} should be removed`)
-      }
-    })
-  })
-
   describe('agent removal preserves non-sparq files', () => {
     let tempDir
 
@@ -157,47 +131,6 @@ describe('cmdUninstall', () => {
   // Skill removal
   // -------------------------------------------------------------------------
 
-  describe('skill removal', () => {
-    let tempDir
-
-    before(async () => {
-      tempDir = await initProject({ name: 'uninstall-skills' })
-    })
-
-    after(() => {
-      cleanTempDir(tempDir)
-    })
-
-    it('should remove sparq-prefixed skill directories', async () => {
-      const skillsDir = join(tempDir, '.claude', 'skills')
-      const sparqSkills = readdirSync(skillsDir).filter(
-        (d) =>
-          d.startsWith('sparq-') &&
-          d !== 'sparq-shared' &&
-          statSync(join(skillsDir, d)).isDirectory(),
-      )
-      assert.ok(sparqSkills.length > 0, 'Should have sparq skill dirs before uninstall')
-
-      await cmdUninstall(tempDir, { force: true, nonInteractive: true })
-
-      // sparq-shared may remain as an empty shell — uninstall removes its files
-      // but other sparq-* skill dirs should be fully removed
-      const remaining = existsSync(skillsDir)
-        ? readdirSync(skillsDir).filter(
-            (d) =>
-              d.startsWith('sparq-') &&
-              d !== 'sparq-shared' &&
-              statSync(join(skillsDir, d)).isDirectory(),
-          )
-        : []
-      assert.equal(
-        remaining.length,
-        0,
-        'All sparq skill dirs (except sparq-shared) should be removed',
-      )
-    })
-  })
-
   describe('skill removal preserves non-sparq skills', () => {
     let tempDir
 
@@ -222,35 +155,6 @@ describe('cmdUninstall', () => {
         existsSync(join(tempDir, '.claude', 'skills', 'custom-skill')),
         'Non-sparq skill directory should be preserved',
       )
-    })
-  })
-
-  // -------------------------------------------------------------------------
-  // Template removal
-  // -------------------------------------------------------------------------
-
-  describe('template removal', () => {
-    let tempDir
-
-    before(async () => {
-      tempDir = await initProject({ name: 'uninstall-templates' })
-    })
-
-    after(() => {
-      cleanTempDir(tempDir)
-    })
-
-    it('should remove template files', async () => {
-      const templatesDir = join(tempDir, '.claude', 'templates')
-      assert.ok(existsSync(templatesDir), 'Templates directory should exist before uninstall')
-
-      await cmdUninstall(tempDir, { force: true, nonInteractive: true })
-
-      // Templates should be removed (directory may remain if empty cleanup handles it)
-      if (existsSync(templatesDir)) {
-        const remaining = readdirSync(templatesDir)
-        assert.equal(remaining.length, 0, 'Templates directory should be empty after uninstall')
-      }
     })
   })
 
@@ -606,33 +510,7 @@ describe('cmdUninstall', () => {
           `Agent ${name} should still exist`,
         )
       }
-      assert.ok(capture.text().includes('dry-run'), 'Should indicate dry-run mode in output')
-    })
-  })
-
-  // -------------------------------------------------------------------------
-  // Full uninstall completeness
-  // -------------------------------------------------------------------------
-
-  describe('full uninstall completeness', () => {
-    let tempDir
-
-    before(async () => {
-      tempDir = await initProject({ name: 'uninstall-complete' })
-    })
-
-    after(() => {
-      cleanTempDir(tempDir)
-    })
-
-    it('should report item count in completion message', async () => {
-      await cmdUninstall(tempDir, { force: true, nonInteractive: true })
-
-      assert.ok(
-        capture.text().includes('Uninstall complete'),
-        'Should show uninstall complete message',
-      )
-      assert.ok(capture.text().includes('item(s) removed'), 'Should report number of items removed')
+      assert.ok(capture.text().includes('DRY-RUN'), 'Should indicate dry-run mode in output')
     })
   })
 

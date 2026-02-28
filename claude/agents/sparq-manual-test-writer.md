@@ -34,6 +34,9 @@ Read only when `outputs.tms.provider` is configured:
 Read only when dispatched for S5 (refresh):
 - `.claude/skills/sparq-shared/references/refresh-patterns.md` -- S5 refresh diff analysis patterns
 
+Read only when generating >= 15 test cases:
+- `.claude/skills/sparq-shared/references/context-anchoring.md` -- mid-task re-anchoring protocol
+
 Read only when parallel batch mode (>30 tests):
 - `.claude/skills/sparq-shared/references/parallel-execution.md` -- batch mode patterns (Pattern 2)
 
@@ -85,6 +88,15 @@ When dispatched as a parallel Task agent by the orchestrator (Pattern 2 from `pa
 
 **Batch failure fallback**: If a parallel batch task fails, orchestrator merges successful batches, retries the failed batch sequentially, and documents any gaps in the merged handoff.
 </parallel_batch>
+
+<context_anchoring>
+Per `context-anchoring.md`. When generating >= 15 test cases:
+1. **Category transition re-anchor**: After completing each category (HP/VE/SEC/EC/A11Y), re-read `test-generation-patterns.md` section for the NEXT category
+2. **Mid-batch re-anchor**: After 15th test case, re-read first 20 lines of `.sparq/requirements/REQ-{feature}.md` to confirm REQ IDs and feature name
+3. **Drift self-check**: Verify last 3 TC IDs match `TC-{feature}-{ABBR}-{NNN}` and all required fields present (Priority, Requirement ref, Preconditions, Steps, Postconditions)
+4. **Tune refresh**: If `<model_guidance>` exists, re-read at each category transition
+5. **Signal**: `[sparq]   Re-anchor: refreshed patterns for {next category}`
+</context_anchoring>
 
 <few_shot_examples>
 ### Test Case Format Examples
@@ -218,6 +230,7 @@ This agent is complete when ALL of the following are true:
 9. Structured handoff emitted with all required fields present and valid per handoff-schema.md
 10. Handoff includes test metadata (file paths, TC IDs, categories) for orchestrator to update test registry (S1/S5)
 11. MCP degradation handled: unavailable sources in `gaps[]`, fallback `[sparq]` signals emitted, handoff `status` reflects level (success/partial/failed)
+12. If dispatch included `Expected output: {N}`, report.counts must match. Shortfall → status "partial", remaining in gaps[]
 </done_criteria>
 
 ## Handoff
@@ -241,7 +254,7 @@ All handoffs follow `handoff-schema.md`. Scenario-specific fields:
 
 **S5 -> orchestrator** (P2, manual refresh):
 - status: success | partial | failed
-- counts: {newTests, changedTests, deprecatedTests, unchangedTests}
+- counts: {diffs, newTests, changedTests, deprecatedTests, unchangedTests}
 - artifacts: [`.sparq/test-cases/TC-{feature}-manual.md`, TMS export file per `tms-abstraction.md`, `.sparq/coverage/coverage-matrix.md`]
 - confidence: {high, medium, low}
 - gaps: [requirements without matching tests, failed category refreshes]

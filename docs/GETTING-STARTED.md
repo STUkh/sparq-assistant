@@ -22,7 +22,7 @@ A beginner's guide to installing, configuring, and running your first QA test ge
 
 ## What is SparQ?
 
-SparQ is a QA testing toolkit that works inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (Anthropic's AI coding assistant). You describe what you want to test -- by pointing to a Jira ticket, pasting requirements, or providing a Figma link -- and SparQ generates structured manual test cases and end-to-end (E2E) test code (Playwright or Cypress) for you.
+SparQ is a QA testing toolkit that works inside your AI coding assistant — [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Cursor](https://cursor.com), or [Codex](https://openai.com/index/codex/). You describe what you want to test — by pointing to a Jira ticket, pasting requirements, or providing a Figma link — and SparQ generates structured manual test cases and end-to-end (E2E) test code (Playwright or Cypress) for you.
 
 **What makes SparQ different:**
 
@@ -50,9 +50,15 @@ SparQ is a QA testing toolkit that works inside [Claude Code](https://docs.anthr
 
 Before diving in, here are the core ideas you'll encounter.
 
-### Claude Code
+### AI Coding Assistant
 
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic's command-line AI coding assistant. You interact with it in your terminal, and it can read your code, edit files, and run commands. SparQ runs entirely inside Claude Code -- it adds AI agents and slash commands to Claude Code's capabilities.
+SparQ works inside your AI coding assistant. It auto-detects every AI editor present in your project and installs extras for all of them simultaneously — no flag required.
+
+- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** — Anthropic's CLI coding assistant (always active). Agents and skills install to `.claude/`.
+- **[Cursor](https://cursor.com)** — detected via `.cursor/` directory. SparQ installs MCP config to `.cursor/mcp.json` and rules to `.cursor/rules/sparq.mdc`.
+- **[Codex](https://openai.com/index/codex/)** — detected via `.codex/` or `.agents/` directory. SparQ installs config to `.codex/config.toml` and symlinks skills to `.agents/skills/`.
+
+All detected editors get the same agents, skills, and pipeline. You can use Claude Code, Cursor, and Codex on the same project at the same time.
 
 ### Agents
 
@@ -63,14 +69,14 @@ Agents are specialized AI workers, each trained for a specific task. SparQ has f
 | **Orchestrator** | Routes your request to the right agents, manages the workflow | Project manager |
 | **Requirements Analyst** | Gathers info from Jira, Confluence, Figma, and local docs | Business analyst |
 | **Manual Test Writer** | Creates structured manual test cases | QA writer |
-| **Automation Engineer** | Generates E2E test code (Playwright or Cypress); also handles bug regression tests | Test automation developer |
+| **Automation Engineer** | Generates E2E test code (Playwright or Cypress); handles bug tickets as inline regression tests | Test automation developer |
 | **Test Validator** | Checks existing tests for staleness and drift; also handles bulk refactoring | QA reviewer |
 
 You don't interact with agents directly -- the orchestrator assigns them work based on what you ask for.
 
 ### Skills (Slash Commands)
 
-Skills are commands you type in Claude Code to start a workflow. They look like `/sparq:something`. For example:
+Skills are commands you type in your AI coding assistant to start a workflow. They look like `/sparq:something`. For example:
 
 ```
 /sparq:start
@@ -86,20 +92,19 @@ Here are the main skills:
 | `/sparq:generate` | Generate both manual tests and E2E code |
 | `/sparq:generate-manual` | Generate manual test cases only |
 | `/sparq:generate-e2e` | Generate E2E tests only (Playwright or Cypress) |
-| `/sparq:manual-to-e2e` | Convert existing manual tests to E2E code code |
+| `/sparq:manual-to-e2e` | Convert existing manual tests to E2E code |
 | `/sparq:validate` | Check existing tests for broken selectors and drift |
 | `/sparq:sync` | Update tests when requirements change |
-| `/sparq:regression` | Create a regression test from a bug ticket |
+| `/sparq:publish-results` | Publish test run results to TMS |
 | `/sparq:export` | Push test cases to TestRail, Qase, or local folder |
 | `/sparq:refactor` | Bulk rename selectors or patterns across tests |
 | `/sparq:analyze` | Gather requirements without generating tests |
 | `/sparq:resume` | Resume an interrupted workflow |
 | `/sparq:config` | Review and update SparQ configuration |
-| `/sparq:tune` | Apply model tier guidance for cost optimization |
 
 Lane model used by `/sparq:start`:
 - `Generate` lane: `/sparq:generate-manual`, `/sparq:generate-e2e`, `/sparq:generate`, `/sparq:manual-to-e2e`
-- `Maintain` lane: `/sparq:validate`, `/sparq:sync`, `/sparq:regression`, `/sparq:refactor`, `/sparq:export`
+- `Maintain` lane: `/sparq:validate`, `/sparq:sync`, `/sparq:refactor`, `/sparq:export`
 
 ### Scenarios (S1--S6)
 
@@ -107,16 +112,14 @@ SparQ classifies every request into one of six "scenarios" that determine which 
 
 ```mermaid
 flowchart TD
-  Start[Your Request] --> Q0{Bug ticket or<br/>regression keywords?}
-  Q0 -->|Yes| S6["S6: Bug Regression<br/>/sparq:regression"]
-  Q0 -->|No| Q1{Manual test cases<br/>as input?}
+  Start[Your Request] --> Q1{Manual test cases<br/>as input?}
   Q1 -->|Yes| S2["S2: Manual to E2E<br/>/sparq:manual-to-e2e"]
   Q1 -->|No| Q2{Existing test files<br/>to check?}
   Q2 -->|Yes| Q4{Requirements<br/>changed?}
   Q4 -->|Yes| S5["S5: Requirement Sync<br/>/sparq:sync"]
   Q4 -->|No| S4["S4: Test Validation<br/>/sparq:validate"]
   Q2 -->|No| Q3{Want automated<br/>E2E tests?}
-  Q3 -->|Yes| S3["S3: E2E Generation<br/>/sparq:generate-e2e"]
+  Q3 -->|Yes| S3["S3: E2E Generation<br/>/sparq:generate-e2e<br/>(feature tickets, bug tickets)"]
   Q3 -->|No| S1["S1: Manual Creation<br/>/sparq:generate-manual"]
 ```
 
@@ -128,23 +131,13 @@ MCP (Model Context Protocol) servers let SparQ connect to external tools like Ji
 
 **None of them are required.** SparQ works without any MCP servers -- it just asks you to paste information manually instead of pulling it automatically.
 
-**Setting up MCP servers:** All MCP server configuration in Claude Code is managed through the `claude mcp` command. This is the canonical way to add, remove, and inspect MCP server connections. For example:
+**Setting up MCP servers:** MCP server configuration depends on your platform:
 
-```bash
-# List configured MCP servers
-claude mcp list
+- **Claude Code** — managed via `claude mcp` commands (`claude mcp list`, `claude mcp add`, `claude mcp remove`)
+- **Cursor** — stored in `.cursor/mcp.json` (auto-configured by SparQ installer)
+- **Codex** — stored in `.codex/config.toml` (auto-configured by SparQ installer)
 
-# Add a new MCP server (stdio transport)
-claude mcp add playwright -- npx @anthropic/mcp-playwright
-
-# Add a new MCP server (HTTP transport)
-claude mcp add atlassian --transport http --url https://mcp.atlassian.com/v1
-
-# Remove an MCP server
-claude mcp remove playwright
-```
-
-Run `claude mcp --help` for the full list of subcommands. The SparQ installer (`npx sparq-assistant init`) automatically configures the relevant MCP servers for you, but you can use `claude mcp` to adjust them afterward.
+The SparQ installer (`npx sparq-assistant init`) automatically configures the relevant MCP servers for your platform.
 
 | Server | Connects To | Required? |
 |--------|------------|-----------|
@@ -187,17 +180,15 @@ node --version
 
 If you need to install or upgrade: [nodejs.org](https://nodejs.org/)
 
-**2. Claude Code CLI**
+**2. AI Coding Assistant**
 
-SparQ runs inside Claude Code, so you need it installed and authenticated.
+SparQ runs inside your AI coding assistant. You need one of the following installed:
 
-Check if it's installed:
+- **Claude Code** — `claude --version` ([install guide](https://docs.anthropic.com/en/docs/claude-code))
+- **Cursor** — [cursor.com](https://cursor.com)
+- **Codex** — `codex --version` ([install guide](https://openai.com/index/codex/))
 
-```bash
-claude --version
-```
-
-If you need to install it, follow the [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code).
+SparQ auto-detects your platform during installation.
 
 **3. A project with `package.json`**
 
@@ -205,7 +196,7 @@ SparQ reads your `package.json` to detect your framework (Vue, React, Angular, S
 
 **4. VSCode (Recommended)**
 
-While Claude Code works in any terminal, we recommend using [Visual Studio Code](https://code.visualstudio.com/) as your editor. VSCode provides the best experience for reviewing generated test files, navigating page objects, and inspecting diffs. The [Claude Code VSCode extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code) integrates directly into the editor, so you can run SparQ skills without leaving your IDE.
+We recommend [Visual Studio Code](https://code.visualstudio.com/) as your editor. VSCode provides the best experience for reviewing generated test files, navigating page objects, and inspecting diffs. If using Claude Code, the [Claude Code VSCode extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code) integrates directly into the editor. If using Cursor, SparQ integrates natively through Cursor's agent and MCP features.
 
 ### Optional
 
@@ -239,7 +230,7 @@ The installer runs a 6-step wizard:
 3. **Test directory** -- where your E2E tests live (usually `e2e/`), auto-detected if Playwright is set up
 4. **Test management system** -- where to export test cases (TestRail, Qase, local folder, or skip)
 5. **Export targets** -- whether to link tests back to Jira tickets or publish to Confluence
-6. **Preferences** -- checkpoint verbosity level (full, minimal, or silent)
+6. **Preferences** -- checkpoint verbosity level (full, standard, or fast)
 
 > **Tip:** Not sure what to pick? Press Enter to accept the default for each step. You can change everything later in `sparq.config.json`.
 
@@ -259,14 +250,13 @@ npx sparq-assistant@latest init --features=core,e2e,jira
 npx sparq-assistant@latest init --dry-run
 ```
 
-### Step 3: Restart Claude Code
+### Step 3: Restart your AI coding assistant
 
-After installation, restart Claude Code so it loads the new MCP server configurations:
+After installation, restart your IDE or CLI so it loads the new MCP server configurations:
 
-```bash
-# Close Claude Code, then reopen it
-claude
-```
+- **Claude Code** — close and reopen (`claude`)
+- **Cursor** — reload window (Cmd/Ctrl+Shift+P → "Reload Window")
+- **Codex** — restart the CLI
 
 ### Step 4: Verify the installation
 
@@ -304,19 +294,18 @@ your-project/
 │   │   ├── sparq-manual-to-e2e/
 │   │   ├── sparq-validate/
 │   │   ├── sparq-sync/
-│   │   ├── sparq-regression/
+│   │   ├── sparq-publish-results/
 │   │   ├── sparq-export/
 │   │   ├── sparq-resume/
 │   │   ├── sparq-refactor/
 │   │   ├── sparq-analyze/
 │   │   ├── sparq-init/
 │   │   ├── sparq-config/
-│   │   ├── sparq-tune/
 │   │   ├── sparq-start/
 │   │   ├── sparq-playwright-best-practices/
 │   │   ├── sparq-cypress-best-practices/
 │   │   └── sparq-shared/         # Shared reference docs for agents
-│   │       └── references/       # (36 files: patterns, protocols, schemas)
+│   │       └── references/       # (48 files: patterns, protocols, schemas)
 │   ├── templates/                 # Output format templates
 │   └── rules/                     # Path-scoped validation rules
 ├── .sparq/                        # SparQ working directory (gitignored)
@@ -388,7 +377,7 @@ Choose one of these three paths based on your situation.
 
 This is the most common workflow. You have a Jira ticket describing a feature, and you want both manual test cases and Playwright E2E code.
 
-**In Claude Code, type:**
+**In your AI coding assistant, type:**
 
 ```
 /sparq:generate EP-14
@@ -418,7 +407,7 @@ Replace `EP-14` with your actual Jira ticket ID.
    - How many test cases it plans to generate
    - Which agents will be involved
 
-   **How to respond:** This is a normal Claude Code conversation. You can:
+   **How to respond:** This is a normal conversation with your AI coding assistant. You can:
    - Say **"looks good"** or **"approved"** to continue
    - Say **"add a requirement for password complexity"** to adjust before proceeding
    - Ask questions like **"why only 12 requirements?"** and SparQ will explain
@@ -459,7 +448,7 @@ Replace `EP-14` with your actual Jira ticket ID.
 
 You don't need Jira. You can describe the feature in plain English.
 
-**In Claude Code, type:**
+**In your AI coding assistant, type:**
 
 ```
 /sparq:generate-manual for the user login feature with email and password fields, forgot password link, and remember me checkbox
@@ -476,23 +465,23 @@ The flow is the same as Path A, except the requirements come from your text inst
 
 The simplest workflow. You have a bug ticket and want a focused regression test.
 
-**In Claude Code, type:**
+**In your AI coding assistant, type:**
 
 ```
-/sparq:regression BUG-42
+/sparq:generate-e2e BUG-42
 ```
 
 Or if you don't have Jira, paste the bug details:
 
 ```
-/sparq:regression The discount code is applied twice when the user clicks "Apply" rapidly
+/sparq:generate-e2e The discount code is applied twice when the user clicks "Apply" rapidly
 ```
 
 SparQ will:
 1. Analyze the bug and extract repro steps
-2. Generate a single focused Playwright spec at `e2e/specs/regression/BUG-42.spec.ts`
-3. Tag it with `@regression` for easy filtering
-4. Reuse your existing page objects (never creates duplicates)
+2. Append a regression test inline to the relevant feature spec with a `REG-BUG42-001` ID in the test title
+3. Reuse your existing page objects (never creates duplicates)
+4. Filter regression tests with `npx playwright test --grep "REG-"`
 
 ---
 
@@ -539,7 +528,7 @@ npx playwright test --list
 npx playwright test e2e/specs/forgot-password.spec.ts
 
 # Run only regression tests
-npx playwright test --grep @regression
+npx playwright test --grep "REG-"
 ```
 
 ### Understanding test IDs
@@ -565,7 +554,7 @@ This shows which requirements are covered by which test cases, and calculates an
 
 ## All Available Commands
 
-### Slash commands (inside Claude Code)
+### Slash commands (inside your AI coding assistant)
 
 | Command | What It Does | Example |
 |---------|-------------|---------|
@@ -575,7 +564,6 @@ This shows which requirements are covered by which test cases, and calculates an
 | `/sparq:manual-to-e2e` | Convert manual tests to E2E code | `/sparq:manual-to-e2e tests.md` |
 | `/sparq:validate` | Check tests for broken selectors/drift | `/sparq:validate e2e/specs/auth/` |
 | `/sparq:sync` | Update tests when requirements change | `/sparq:sync EP-14 e2e/specs/auth/` |
-| `/sparq:regression` | Regression test from a bug ticket | `/sparq:regression BUG-42` |
 | `/sparq:export` | Export to TestRail, Qase, or local folder | `/sparq:export login` |
 | `/sparq:analyze` | Gather requirements only (no tests) | `/sparq:analyze EP-14` |
 | `/sparq:resume` | Resume an interrupted workflow | `/sparq:resume` |
@@ -609,7 +597,7 @@ flowchart TD
 | `npx sparq-assistant update` | Update agents and skills to latest |
 | `npx sparq-assistant doctor` | Verify installation is healthy |
 | `npx sparq-assistant clean` | Remove old artifacts from `.sparq/` |
-| `npx sparq-assistant tune` | Apply/revert model tier guidance |
+| `npx sparq-assistant lint [path]` | Run 18 deterministic rubrics on E2E tests (flaky patterns, locators, assertions — CI-compatible) |
 | `npx sparq-assistant uninstall` | Remove all SparQ files from project |
 | `npx sparq-assistant help` | Show available commands and options |
 
@@ -617,21 +605,17 @@ flowchart TD
 
 ## Setting Up MCP Integrations
 
-MCP servers let SparQ pull data from external tools automatically. All are optional -- skip any you don't use.
+MCP servers let SparQ pull data from external tools automatically. All are optional — skip any you don't use.
 
-MCP servers are managed through the `claude mcp` command. The SparQ installer configures these for you during `npx sparq-assistant init`, but you can inspect or modify them at any time:
+The SparQ installer configures MCP servers for you during `npx sparq-assistant init`. You can inspect or modify them afterward:
 
-```bash
-# See what's currently configured
-claude mcp list
-
-# Re-add a server if needed
-claude mcp add <name> -- <command>
-```
+- **Claude Code** — use `claude mcp list` and `claude mcp add <name> -- <command>`
+- **Cursor** — edit `.cursor/mcp.json` or use Cursor's MCP settings
+- **Codex** — edit `.codex/config.toml`
 
 ### Jira + Confluence (Atlassian)
 
-**Setup:** Automatic. On first use, Claude Code prompts you to authorize via OAuth.
+**Setup:** Automatic. On first use, your AI coding assistant prompts you to authorize via OAuth.
 
 **What it enables:** SparQ can read Jira ticket details (acceptance criteria, user stories) and Confluence pages (specs, design docs) directly.
 
@@ -639,7 +623,7 @@ claude mcp add <name> -- <command>
 
 ### Figma
 
-**Setup:** Automatic. On first use, Claude Code prompts you to authorize via OAuth.
+**Setup:** Automatic. On first use, your AI coding assistant prompts you to authorize via OAuth.
 
 **What it enables:** SparQ extracts component names, element labels, and layout information from Figma designs to generate more accurate selectors.
 
@@ -730,10 +714,10 @@ SparQ compares the updated Jira ticket against your existing tests, identifies g
 ### "A bug was reported and I need a regression test"
 
 ```
-/sparq:regression BUG-42
+/sparq:generate-e2e BUG-42
 ```
 
-Generates a single focused test at `e2e/specs/regression/BUG-42.spec.ts`, tagged `@regression`, reusing existing page objects.
+Appends a regression test inline to the relevant feature spec with a `REG-BUG42-001` ID in the test title, reusing existing page objects. Filter with `npx playwright test --grep "REG-"`.
 
 ### "I want to export tests to TestRail"
 
@@ -750,6 +734,14 @@ Exports the test cases for the "login" feature to your configured TMS (TestRail,
 ```
 
 SparQ checks `.sparq/state/` for the last workflow state and picks up where it left off. No work is lost.
+
+### "I want to check code quality of generated tests"
+
+```bash
+npx sparq-assistant lint e2e/
+```
+
+Runs deterministic structural checks on your E2E test files — flaky patterns, locator quality, assertion coverage, naming conventions. No AI inference. Use `--strict` for CI enforcement.
 
 ---
 
@@ -836,8 +828,8 @@ node --version
 
 ### "MCP server not connecting"
 
-1. Restart Claude Code (MCP servers are loaded on startup)
-2. Check `.mcp.json` exists in your project root
+1. Restart your AI coding assistant (MCP servers are loaded on startup)
+2. Check your MCP config exists (`.mcp.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.codex/config.toml` for Codex)
 3. Run `npx sparq-assistant doctor --deep` to test connectivity
 4. For Atlassian/Figma: re-authorize when prompted
 
@@ -861,8 +853,8 @@ SparQ auto-detects your E2E structure during init. If something is off:
 
 This is expected behavior. SparQ requires your approval at every phase transition to ensure quality. If you want less interaction:
 
-1. Set `preferences.checkpointLevel` to `"minimal"` in `sparq.config.json`
-2. Or set `preferences.interactiveMode` to `false` for auto-approval (use with caution)
+1. Set `preferences.checkpointLevel` to `"fast"` in `sparq.config.json`
+2. Or enable `preferences.batchApproval` for plan-once, run-mostly-uninterrupted mode
 
 ### "Workflow got interrupted, lost my progress"
 
@@ -891,7 +883,7 @@ Now that you're up and running, explore the detailed documentation:
 - [Unified generate (S1+S2)](../examples/s1s2-unified-generate.md) -- Jira to manual tests + E2E code
 - [Manual creation (S1)](../examples/s1-manual-creation.md) -- Jira to manual test cases
 - [Manual to E2E (S2)](../examples/s2-manual-to-e2e.md) -- Manual tests to Playwright
-- [E2E generation (S3)](../examples/s3-e2e-generation.md) -- Jira to Playwright directly
+- [E2E generation — feature ticket (S3)](../examples/s3-feature-ticket.md) -- Jira to Playwright directly
 - [Test validation (S4)](../examples/s4-test-sync.md) -- Check tests after UI changes
 - [Requirement sync (S5)](../examples/s5-test-refresh.md) -- Sync tests with updated reqs
-- [Bug regression (S6)](../examples/s6-bug-regression.md) -- Bug ticket to regression spec
+- [Bug ticket regression (S3)](../examples/s3-bug-ticket.md) -- Bug ticket to inline regression test

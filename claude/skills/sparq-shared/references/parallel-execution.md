@@ -169,6 +169,12 @@ Agents MUST NOT generate IDs outside their assigned range. If overflow, document
 - Sum counts across batches
 - Merge gaps arrays (deduplicate)
 - Run Tier 2 merge protocol for barrel exports and registry
+
+### Completeness Verification
+- Pre-merge: verify handoff file exists on disk for ALL `taskIndex` (1..`totalTasks`). Missing after 2× timeout → escalate.
+- Per-task: `delivered >= expectedItemCount` OR `status: "partial"` with gaps. Never silently accept shortfall.
+- Merge total: `sum(delivered) >= total_expected` OR structured gap report at checkpoint.
+- ID range: `count(IDs in assigned range) == expectedItemCount` per task. Underflow → document in gap report.
 </pattern>
 
 ## Pattern 3: Parallel Independent Checks
@@ -283,6 +289,8 @@ Parallel Task agents emit a standard `AgentHandoff` with one optional addition:
 ```
 
 The `parallel` field is optional. When present, the orchestrator waits for all `taskIndex` values (1..`totalTasks`) before proceeding to merge.
+
+When dispatch includes `Expected output: {N}`, each parallel task receives `expectedItemCount` in its dispatch for per-task completion verification per `completion-verification.md`.
 
 The `filesWritten` field lists project files created or modified by this agent (Tier 1 direct-writes) for git rollback tracking.
 </parallel_handoff>

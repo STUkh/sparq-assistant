@@ -8,8 +8,8 @@ interface AgentHandoff {
   version: "1.0"
   from: string                    // sending agent name
   to: string                      // receiving agent or "orchestrator"
-  scenario: "S1"|"S2"|"S3"|"S4"|"S5"|"S6"
-  phase: "P0.5"|"P1"|"P2"|"P3"
+  scenario: "S1"|"S1+S2"|"S2"|"S3"|"S4"|"S5"|"S6"
+  phase: "P0"|"P0.5"|"P1"|"P1.5"|"P2"|"P3"
   status: "success"|"partial"|"failed"
   report: {
     counts: Record<string, number>  // e.g. {sources: 3, reqs: 12, tests: 45}
@@ -24,6 +24,15 @@ interface AgentHandoff {
     totalTasks: number            // total parallel tasks in this dispatch
     taskIndex: number             // 1-based index of this task
   }
+  anchoring?: {                   // present when context-anchoring protocol was active
+    reAnchorCount: number         // how many re-anchor pauses occurred
+    driftCorrections: number      // how many drift indicators triggered and corrected
+    decisionsApplied: string[]    // decision constraints applied during generation
+  }
+  dispatch?: {                     // present when completion verification active
+    expectedCount: number          // items expected per dispatch contract
+    expectedType: string           // "specs" | "testCases" | "findings" | "diffs"
+  }
 }
 ```
 </schema>
@@ -37,6 +46,8 @@ interface AgentHandoff {
 - When `parallel` present: `parallel.taskIndex` must be 1..`parallel.totalTasks`
 - Orchestrator waits for all `taskIndex` values (1..`totalTasks`) before proceeding to merge
 - When `filesWritten` present, paths must be relative to project root and point to existing files
+- When `anchoring` present: `reAnchorCount >= 0`, `driftCorrections >= 0`, `decisionsApplied` max 10 entries
+- When `dispatch` present: if `status == "success"`, `report.counts[dispatch.expectedType] >= dispatch.expectedCount`. Violation → orchestrator rejects handoff
 - `report.artifacts` maximum 50 entries
 - `gaps` maximum 20 entries
 - Total handoff JSON must be under 12KB (~3,000 tokens)
@@ -61,9 +72,33 @@ interface AgentHandoff {
 ```
 </example>
 
+<example>
+### S3 Bug Mode Handoff
+
+S3 dispatch includes `inputType: "feature" | "bug"` to indicate the sub-mode.
+
+```json
+{
+  "version": "1.0",
+  "from": "sparq-automation-engineer",
+  "to": "orchestrator",
+  "scenario": "S3",
+  "phase": "P2",
+  "status": "success",
+  "report": {
+    "counts": {"describeBlocksAdded": 1, "assertionCount": 5},
+    "artifacts": ["e2e/specs/login/login.spec.ts"],
+    "filesWritten": ["e2e/specs/login/login.spec.ts"]
+  },
+  "gaps": [],
+  "instructions": "Appended REG-BUG-142-001 regression block to login.spec.ts. 5 assertions covering repro steps. Smoke: pass."
+}
+```
+</example>
+
 <required_fields>
 **Always required**: version, from, to, scenario, phase, status, report.counts, report.artifacts, gaps, instructions
-**Scenario-optional**: report.confidence (P2 generation agents), report.filesWritten (agents modifying project files), parallel (parallel Task agents only)
+**Scenario-optional**: report.confidence (P2 generation agents), report.filesWritten (agents modifying project files), parallel (parallel Task agents only), anchoring (agents with >= threshold work items per context-anchoring.md), dispatch (all agents when expectedCount in dispatch prompt)
 </required_fields>
 
 <example>

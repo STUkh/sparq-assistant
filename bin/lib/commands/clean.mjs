@@ -5,6 +5,7 @@ import { join, relative } from 'node:path'
 import { createInterface } from 'node:readline'
 import { MAX_RECURSION_DEPTH } from '../constants.mjs'
 import { confirm, toForwardSlash } from '../files.mjs'
+import { forceReleaseLock } from '../lock.mjs'
 import {
   checkInterrupted,
   dryRun,
@@ -46,7 +47,7 @@ const TYPE_MAP = {
   plans: 'plans',
 }
 
-const VALID_TYPES = [...new Set(Object.values(TYPE_MAP))]
+const VALID_TYPES = [...new Set(Object.values(TYPE_MAP)), 'lock']
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -177,6 +178,9 @@ function displaySummary(artifacts, totalSize) {
   for (const [artifactType, count] of Object.entries(typeCounts).sort()) {
     console.log(`    ${style.dim(artifactType)}: ${count} file(s)`)
   }
+  info(
+    `${style.dim('Protected (excluded): .manifest.json, .backup/, plans/. Use --all to include tracking data.')}`,
+  )
   console.log()
 
   const hasRegistry = artifacts.some((a) => a.relativePath === TRACKING_REGISTRY)
@@ -259,6 +263,21 @@ function deleteArtifacts(artifacts, totalSize, sparqDir) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Handle `--type lock`: remove the concurrency lock file when safe to do so.
+ */
+function handleLockTypeClean(targetDir) {
+  const removed = forceReleaseLock(targetDir)
+  if (removed) {
+    ok('Lock file removed.')
+  } else if (!existsSync(join(targetDir, '.sparq', '.lock'))) {
+    info('No lock file found — nothing to remove.')
+  } else {
+    fail('Lock is held by a running SparQ process — cannot force-remove a live lock.')
+    info('Wait for the process to finish, or terminate it first.')
+  }
+}
+
+/**
  * Remove stale artifacts from .sparq/ output directories.
  */
 export async function cmdClean(targetDir, options = {}) {
@@ -270,12 +289,24 @@ export async function cmdClean(targetDir, options = {}) {
     nonInteractive = false,
   } = options
 
-  heading(`${emoji.clean}SparQ QA Assistant — Clean`)
-
   if (!validateTargetDir(targetDir)) return
 
   if (olderThan !== null && (!Number.isFinite(olderThan) || olderThan <= 0)) {
     fail(`--older-than must be a positive number (got ${options.olderThan ?? 'invalid'})`)
+    return
+  }
+
+  // Validate type filter if provided
+  if (type && !VALID_TYPES.includes(type)) {
+    fail(`Unknown artifact type: "${type}". Valid types: ${VALID_TYPES.join(', ')}`)
+    return
+  }
+
+  heading(`${emoji.clean}SparQ QA Assistant — Clean`)
+
+  // Special case: --type lock removes the concurrency lock file when safe
+  if (type === 'lock') {
+    handleLockTypeClean(targetDir)
     return
   }
 
@@ -286,12 +317,6 @@ export async function cmdClean(targetDir, options = {}) {
   }
 
   checkInterrupted()
-
-  // Validate type filter if provided
-  if (type && !VALID_TYPES.includes(type)) {
-    fail(`Unknown artifact type: "${type}". ` + `Valid types: ${VALID_TYPES.join(', ')}`)
-    return
-  }
 
   // When --all is used, include tracking registry (with explicit confirmation)
   const artifacts = scanArtifacts(sparqDir, {
