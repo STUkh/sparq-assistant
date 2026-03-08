@@ -21,6 +21,7 @@ If a tool name fails, the server key in `.mcp.json` may differ. Check `.mcp.json
 
 **Server**: `atlassian` | **Type**: HTTP | **URL**: `https://mcp.atlassian.com/v1/mcp`
 **Config**: `mcp/atlassian.json`
+**Auth**: OAuth 2.1 (browser login, no ENV vars required). Alternative: API token via `Authorization` header for CI/headless — see `jira-patterns.md` `## Authentication`.
 **Status**: Convention-based (names from Atlassian MCP API documentation)
 
 ### Jira Tools

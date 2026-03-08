@@ -97,6 +97,10 @@ Quick mode defaults:
    - Playwright (when `e2e.framework` is `playwright`): attempt `mcp__playwright__browser_navigate` to `about:blank`
    - Report status for each: available / unavailable / auth required
 
+   **Atlassian OAuth note**: Jira and Confluence use the Atlassian MCP server which authenticates via OAuth 2.1 browser login — no ENV vars or API tokens needed. On first connection, Claude Code opens a browser for Atlassian login and consent. If "Auth required" is reported, the user needs to complete the OAuth flow (e.g., via `/mcp` in Claude Code settings). See `jira-patterns.md` `## Authentication` for alternative CI/headless auth methods.
+
+   > The "Jira project key" prompted during init (e.g., `EP`, `PROJ`) is the project identifier used in JQL queries — it is NOT an API key or credential.
+
    After verification, present results in a clear dashboard:
 
    ```
@@ -110,7 +114,7 @@ Quick mode defaults:
 
    Status values:
    - "Ready" -- connection verified, tool responded
-   - "Auth failed" -- "Check your API token in .mcp.json"
+   - "Auth required" -- Atlassian: "Complete OAuth login via /mcp in Claude Code"; Others: "Check your API token in .mcp.json"
    - "Not configured" -- "Enable in sparq.config.json or via /sparq:config"
    - "Timeout" -- "Service may be temporarily unavailable. SparQ will retry during workflows."
 

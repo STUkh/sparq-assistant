@@ -2,6 +2,41 @@
 
 > **NOTE:** Tool names derived from Atlassian MCP server registered as `atlassian` in `.mcp.json`. If your server key differs, adjust the `mcp__atlassian__` prefix accordingly. Verify with `ToolSearch` on first use.
 
+## Authentication
+
+The Atlassian MCP server (`https://mcp.atlassian.com/v1/mcp`) uses **OAuth 2.1 browser-based login**. No environment variables or API tokens are required for default setup.
+
+**How it works:**
+1. On first connection, Claude Code initiates the OAuth 2.1 flow automatically
+2. A browser window opens for Atlassian login and consent (select which site/products to grant access)
+3. After consent, an access token is issued and used for all subsequent requests
+4. Token refresh is handled automatically by the MCP client
+
+**No `.mcp.json` credentials needed** — the minimal config is sufficient:
+```json
+{
+  "mcpServers": {
+    "atlassian": {
+      "type": "http",
+      "url": "https://mcp.atlassian.com/v1/mcp"
+    }
+  }
+}
+```
+
+**Alternative auth methods** (CI/headless environments only):
+
+- **Personal API Token** (Basic Auth): Requires org admin to enable API token auth. Generate a token at `https://id.atlassian.com/manage-profile/security/api-tokens`, then add a `headers` block:
+  ```json
+  "headers": { "Authorization": "Basic <base64(email:api_token)>" }
+  ```
+- **Service Account Bearer Token**: For non-human/CI use. Requires org admin setup:
+  ```json
+  "headers": { "Authorization": "Bearer <service_account_api_key>" }
+  ```
+
+> **Requires Atlassian Rovo license** (Jira, Confluence, Compass on Atlassian Cloud). The `/v1/sse` endpoint is deprecated — use `/v1/mcp`.
+
 ## Tools
 
 **mcp__atlassian__jira_get_issue** -- Fetch single issue with description, acceptance criteria, links, subtasks.

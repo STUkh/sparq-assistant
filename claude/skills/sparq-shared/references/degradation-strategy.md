@@ -45,7 +45,7 @@ When codebase readiness assessment (per `codebase-readiness.md`) finds insuffici
 
 <retry_rules>
 - **Transient** (429, 500-504, timeout): exponential backoff 2s/4s/8s, max 3 retries
-- **Auth** (401, 403): retry once after user re-auth prompt, then fallback, max 1 retry
+- **Auth** (401, 403): retry once after re-auth, then fallback, max 1 retry. Atlassian (OAuth 2.1): session expired/revoked → user must re-authenticate via browser (Claude Code triggers automatically). Other servers (TestRail/Qase/Zephyr): check API token in `.mcp.json` env section.
 - **Client** (400, 404, 422): no retry, immediate fallback
 - **Parse** (invalid JSON, empty body): retry once (may be transient), then fallback, max 1 retry
 </retry_rules>
@@ -206,4 +206,4 @@ If `.sparq/state/` cannot be created or written (permissions, disk full):
 
 ## Init Skill Fallback
 
-**sparq:init**: If MCP server verification fails during init (e.g., servers not installed or network unavailable), warn the user and continue with manual configuration. MCP entries are still written to `.mcp.json` with placeholder credentials -- user can configure them later. For offline environments, see degradation fallback rules above.
+**sparq:init**: If MCP server verification fails during init (e.g., servers not installed or network unavailable), warn the user and continue with manual configuration. For stdio-based servers (TestRail, Qase, Zephyr), MCP entries are written to `.mcp.json` with placeholder env vars — user must replace with real credentials. For HTTP-based servers (Atlassian, Figma), only the URL is needed — Atlassian authenticates via OAuth 2.1 browser login (no credentials in `.mcp.json`). For offline environments, see degradation fallback rules above.

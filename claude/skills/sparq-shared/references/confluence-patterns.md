@@ -2,6 +2,10 @@
 
 > **NOTE:** Tool names derived from Atlassian MCP server registered as `atlassian` in `.mcp.json`. If your server key differs, adjust the `mcp__atlassian__` prefix accordingly. Verify with `ToolSearch` on first use.
 
+## Authentication
+
+Confluence uses the same Atlassian MCP server as Jira — **OAuth 2.1 browser-based login, no ENV vars required**. See `jira-patterns.md` `## Authentication` for full details including alternative CI/headless auth methods.
+
 ## Tools
 
 **mcp__atlassian__confluence_search_using_cql** -- Search pages via CQL.
