@@ -13,6 +13,10 @@ const PERMISSION_DESCRIPTIONS = {
   'Bash(node:*)': 'Run Node.js scripts for test verification',
   'Bash(npx playwright test:*)': 'Execute Playwright tests',
   'Bash(npx cypress run:*)': 'Execute Cypress tests',
+  'Bash(npx playwright screenshot:*)': 'Take browser screenshots via Playwright CLI',
+  'Bash(npx playwright codegen:*)': 'Generate test code via Playwright codegen',
+  'Bash(npx playwright open:*)': 'Open browser via Playwright CLI',
+  'Bash(npx playwright install:*)': 'Install Playwright browsers',
   'Bash(npx tsc:*)': 'Run TypeScript compiler checks',
   'Read(.sparq/**)': 'Read SparQ output artifacts',
   'Write(.sparq/**)': 'Write SparQ output artifacts',
@@ -38,7 +42,6 @@ const BASE_PERMISSIONS = Object.freeze([
  * Multiple features may map to the same pattern (e.g., jira + confluence -> atlassian).
  */
 const FEATURE_MCP_MAP = Object.freeze({
-  'playwright-mcp': 'mcp__playwright__*',
   jira: 'mcp__atlassian__*',
   confluence: 'mcp__atlassian__*',
   figma: 'mcp__figma__*',
@@ -46,17 +49,38 @@ const FEATURE_MCP_MAP = Object.freeze({
   qase: 'mcp__qase__*',
 })
 
+const FEATURE_CLI_PERMISSIONS = Object.freeze({
+  'playwright-cli': [
+    'Bash(npx playwright screenshot:*)',
+    'Bash(npx playwright codegen:*)',
+    'Bash(npx playwright open:*)',
+    'Bash(npx playwright install:*)',
+  ],
+})
+
 // ---------------------------------------------------------------------------
 // Permission Rule Builder
 // ---------------------------------------------------------------------------
 
 /**
- * Build the `allow` permission array based on enabled features.
- * Always includes base permissions. Adds MCP patterns for matching features.
+ * Add MCP and CLI permissions for a single feature to the permissions array.
  *
- * @param {string[]} features - array of enabled feature names
- * @returns {string[]} deduplicated permission strings
+ * @param {string} feature - a single feature name
+ * @param {string[]} permissions - mutable array to append permissions to
  */
+function addFeaturePermissions(feature, permissions) {
+  const mcpPattern = FEATURE_MCP_MAP[feature]
+  if (mcpPattern && !permissions.includes(mcpPattern)) {
+    permissions.push(mcpPattern)
+  }
+  const cliPerms = FEATURE_CLI_PERMISSIONS[feature]
+  if (cliPerms) {
+    for (const perm of cliPerms) {
+      if (!permissions.includes(perm)) permissions.push(perm)
+    }
+  }
+}
+
 export function buildPermissionRules(features = [], options = {}) {
   const permissions = [...BASE_PERMISSIONS]
 
@@ -66,10 +90,7 @@ export function buildPermissionRules(features = [], options = {}) {
   }
 
   for (const feature of features) {
-    const mcpPattern = FEATURE_MCP_MAP[feature]
-    if (mcpPattern && !permissions.includes(mcpPattern)) {
-      permissions.push(mcpPattern)
-    }
+    addFeaturePermissions(feature, permissions)
   }
 
   return permissions

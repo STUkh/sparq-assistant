@@ -94,7 +94,7 @@ Quick mode defaults:
    - TestRail: attempt `mcp__testrail__get_sections` with project ID
    - Qase: attempt `mcp__qase__list_suites` with project code
    If verification fails, warn and continue -- user can configure later (see `degradation-strategy.md` Init Skill Fallback).
-   - Playwright (when `e2e.framework` is `playwright`): attempt `mcp__playwright__browser_navigate` to `about:blank`
+   - Playwright (when `e2e.framework` is `playwright`): run `npx playwright --version` to detect CLI availability
    - Report status for each: available / unavailable / auth required
 
    **Atlassian OAuth note**: Jira and Confluence use the Atlassian MCP server which authenticates via OAuth 2.1 browser login — no ENV vars or API tokens needed. On first connection, Claude Code opens a browser for Atlassian login and consent. If "Auth required" is reported, the user needs to complete the OAuth flow (e.g., via `/mcp` in Claude Code settings). See `jira-patterns.md` `## Authentication` for alternative CI/headless auth methods.
@@ -121,7 +121,7 @@ Quick mode defaults:
    If any source is unavailable, explain impact:
    - "Jira unavailable: Requirements must be provided manually (paste or local file)"
    - "Figma unavailable: Selectors will be derived from codebase analysis only"
-   - "Playwright unavailable: Test verification will be manual"
+   - "Playwright unavailable: Install with `npm i -D @playwright/test && npx playwright install`. Browser verification will be skipped until installed."
 
 9. **Report setup summary** (use plain language — explain what each connection does):
    ```

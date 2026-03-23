@@ -47,7 +47,7 @@ jobs:
         run: |
           node --input-type=module -e "
             import { readFileSync } from 'node:fs';
-            for (const f of ['mcp/atlassian.json','mcp/figma.json','mcp/testrail.json','mcp/playwright.json','mcp/qase.json','mcp/zephyr.json']) {
+            for (const f of ['mcp/atlassian.json','mcp/figma.json','mcp/testrail.json','mcp/qase.json','mcp/zephyr.json']) {
               JSON.parse(readFileSync(f, 'utf-8'));
               console.log('OK:', f);
             }

@@ -51,11 +51,15 @@ describe('buildPermissionRules', () => {
   })
 
   it('should add multiple MCP permissions for multiple features', () => {
-    const rules = buildPermissionRules(['playwright-mcp', 'figma', 'testrail'])
-    assert.ok(rules.includes('mcp__playwright__*'), 'Should include playwright')
+    const rules = buildPermissionRules(['playwright-cli', 'figma', 'testrail'])
+    assert.ok(
+      rules.includes('Bash(npx playwright screenshot:*)'),
+      'Should include playwright CLI perms',
+    )
     assert.ok(rules.includes('mcp__figma__*'), 'Should include figma')
     assert.ok(rules.includes('mcp__testrail__*'), 'Should include testrail')
-    assert.equal(rules.length, 10, 'Should have 7 base + 3 MCP permissions')
+    // 7 base + 4 playwright-cli perms + 2 MCP = 13
+    assert.equal(rules.length, 13, 'Should have 7 base + 4 playwright-cli + 2 MCP permissions')
   })
 
   it('should not add MCP permission for tms-local feature', () => {
@@ -175,14 +179,14 @@ describe('generatePermissions', () => {
     assert.ok(existsSync(claudeDir), '.claude directory should be created')
   })
 
-  it('should include MCP permissions for specified features', () => {
-    generatePermissions(tempDir, { features: ['playwright-mcp', 'figma'] })
+  it('should include CLI permissions for playwright-cli feature', () => {
+    generatePermissions(tempDir, { features: ['playwright-cli', 'figma'] })
 
     const settingsPath = join(tempDir, '.claude', 'settings.local.json')
     const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'))
     assert.ok(
-      settings.permissions.allow.includes('mcp__playwright__*'),
-      'Should include playwright MCP',
+      settings.permissions.allow.includes('Bash(npx playwright screenshot:*)'),
+      'Should include playwright CLI perms',
     )
     assert.ok(settings.permissions.allow.includes('mcp__figma__*'), 'Should include figma MCP')
   })
@@ -299,10 +303,10 @@ describe('generatePermissions', () => {
   })
 
   it('should be idempotent when run twice with same features', () => {
-    generatePermissions(tempDir, { features: ['playwright-mcp'] })
+    generatePermissions(tempDir, { features: ['playwright-cli'] })
     const first = readFileSync(join(tempDir, '.claude', 'settings.local.json'), 'utf-8')
 
-    generatePermissions(tempDir, { features: ['playwright-mcp'] })
+    generatePermissions(tempDir, { features: ['playwright-cli'] })
     const second = readFileSync(join(tempDir, '.claude', 'settings.local.json'), 'utf-8')
 
     assert.equal(second, first, 'Running twice should produce identical output')

@@ -27,7 +27,7 @@ Apply in order: retry -> if exhausted, fallback -> if inadequate, local skill / 
   - TestRail: (L1) MCP tools -> (L2) `/sparq:testrail-api` local skill -> (L3) prompt user for file-based import (TestRail XML/CSV)
   - Zephyr: (L1) MCP tools -> (L2) direct REST `GET /rest/atm/1.0/testcase/search?query=projectKey="{projectKey}"` (Server; Cloud v2: `GET /testcases?projectKey=`; see `zephyr-sync.md`) -> (L3) prompt user for file-based import (Zephyr Scale JSON)
   Pause workflow until user provides file (when file-based import is the final fallback).
-- **Playwright MCP** (`mcp__playwright__*`): skip browser verification, user runs `npx playwright test` manually, continue
+- **Playwright CLI** (`npx playwright`): if `npx playwright --version` fails (not installed), skip browser verification, continue. Log: `[sparq] Browser verification skipped — Playwright not installed`
 </source_fallbacks>
 
 ## Codebase Content Fallbacks
@@ -60,7 +60,7 @@ Per-request timeouts (agents track via retry count as proxy for elapsed time):
 - TestRail: 15s per request (faster API, smaller payloads)
 - Qase: 15s per request (API-based TMS, similar payload size)
 - Zephyr Scale: 15s per request (REST-based TMS, similar payload size)
-- Playwright MCP: 30s per request (browser operations)
+- Playwright CLI: 30s per command (screenshot, inline script execution)
 
 Phase budgets:
 - **Phase 1 (Requirements)**: 2 minutes total across all sources. If budget exceeded, proceed with available results.
@@ -119,10 +119,10 @@ MCP call fails
 <skill_fallbacks>
 - **sparq:analyze**: if primary source fails, prompt user for text; secondary sources degrade gracefully
 - **sparq:generate-manual**: requires `.sparq/requirements/REQ-{feature}.md`; if missing, run `/sparq:analyze` first; no MCP dependency in generation
-- **sparq:manual-to-e2e**: without Figma, use codebase selectors; without Playwright MCP, skip verification; without TMS MCP (when TMS read requested): (1) try `/sparq:qase-api` for Qase or `/sparq:testrail-api` for TestRail, (2) prompt user for file export (TestRail XML/CSV or Qase JSON)
+- **sparq:manual-to-e2e**: without Figma, use codebase selectors; without Playwright CLI, skip verification; without TMS MCP (when TMS read requested): (1) try `/sparq:qase-api` for Qase or `/sparq:testrail-api` for TestRail, (2) prompt user for file export (TestRail XML/CSV or Qase JSON)
 - **sparq:generate-e2e**: combines analyze + manual-to-e2e fallbacks
 - **sparq:sync** (UI drift): codebase validation always works; MCP sources add enrichment only
-- **sparq:sync** (requirements): without test registry, falls back to coverage matrix then title matching (see `refresh-patterns.md`); without requirement source, same as sparq:analyze fallback; without Playwright MCP, skip smoke verification
+- **sparq:sync** (requirements): without test registry, falls back to coverage matrix then title matching (see `refresh-patterns.md`); without requirement source, same as sparq:analyze fallback; without Playwright CLI, skip smoke verification
 - **sparq:export**: per-target fallbacks:
   - TMS: per provider — TestRail: (1) try `/sparq:testrail-api` direct REST, (2) if fails, generate XML at `.sparq/test-cases/TC-{feature}-manual.xml` for manual import; Qase: (1) try `/sparq:qase-api` direct REST, (2) if fails, generate JSON at `.sparq/tms-export/TC-{feature}-qase.json`; Zephyr: (1) direct REST at `{ZEPHYR_BASE_URL}/rest/atm/1.0/testcase` (see `zephyr-sync.md` for Cloud v2 path), (2) if fails, generate JSON at `.sparq/tms-export/TC-{feature}-zephyr.json`; Local: always succeeds
   - Jira: write coverage summary to `.sparq/coverage/{feature}-jira-comment.md` for manual posting
@@ -182,16 +182,16 @@ Generic parallel degradation (Task unavailable, partial completion, slow tasks):
 <s4_capability_matrix>
 What S4 (Sync — UI drift) can check with and without MCP servers:
 
-- **Selector validity**: without MCP = codebase grep for `data-testid`/ARIA; +Playwright = live DOM verification; +Figma = design-to-code comparison
-- **Flow correctness**: without MCP = static route/form analysis; +Playwright = browser execution; +Figma = UI vs design flow
-- **Text/label drift**: without MCP = codebase string matching; +Playwright = live rendered text; +Figma = design vs live text
-- **Coverage gaps**: requirement-to-test mapping (static) — same with/without MCP
-- **Data freshness**: test data pattern analysis (code-level) — same with/without MCP
-- **Flakiness**: without MCP = static anti-pattern detection; +Playwright = runtime detection; Figma = N/A
+- **Selector validity**: without Playwright = codebase grep for `data-testid`/ARIA; +Playwright CLI = live DOM verification via accessibility snapshot; +Figma = design-to-code comparison
+- **Flow correctness**: without Playwright = static route/form analysis; +Playwright CLI = browser execution via inline scripts; +Figma = UI vs design flow
+- **Text/label drift**: without Playwright = codebase string matching; +Playwright CLI = live rendered text via screenshot + snapshot; +Figma = design vs live text
+- **Coverage gaps**: requirement-to-test mapping (static) — same with/without Playwright
+- **Data freshness**: test data pattern analysis (code-level) — same with/without Playwright
+- **Flakiness**: without Playwright = static anti-pattern detection; +Playwright CLI = runtime detection; Figma = N/A
 
-**Without any MCP**: ~60% validation depth (codebase grep + static route analysis + requirement mapping). No live DOM or design comparison.
+**Without Playwright**: ~60% validation depth (codebase grep + static route analysis + requirement mapping). No live DOM or design comparison.
 
-**Recommendation**: For full S4 value, configure at minimum the Playwright MCP (local, no credentials needed). Figma MCP adds design-to-code drift detection.
+**Recommendation**: For full S4 value, install Playwright as a dev dependency (`npm i -D @playwright/test`). Figma MCP adds design-to-code drift detection.
 </s4_capability_matrix>
 
 ## State File Persistence Degradation

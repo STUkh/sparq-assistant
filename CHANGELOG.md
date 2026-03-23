@@ -4,6 +4,29 @@ All notable changes to SparQ Assistant will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-03-22
+
+### Changed
+
+- **Replaced Playwright MCP with Playwright CLI**: Browser verification during test generation and validation now uses Playwright CLI commands (`npx playwright screenshot`, `npx playwright test`, inline scripts) instead of the `@playwright/mcp` MCP server. This eliminates the need to install and configure an MCP server for browser automation.
+- Feature group renamed from `playwright-mcp` to `playwright-cli` (no MCP server installed)
+- Permissions updated: `mcp__playwright__*` replaced with Playwright CLI Bash permissions (`npx playwright screenshot`, `codegen`, `open`, `install`)
+- Doctor command now checks for `@playwright/test` in package.json instead of playwright MCP server in .mcp.json
+- All agent and skill prompts updated to use CLI-based browser verification workflows
+- Reference file `playwright-mcp-tools.md` replaced with `playwright-cli-tools.md`
+
+### Removed
+
+- `mcp/playwright.json` — Playwright MCP server config file removed
+- `mcp__playwright__*` MCP permission pattern no longer generated
+- Playwright removed from required MCP servers in doctor checks
+
+### Migration
+
+- Existing `.mcp.json` entries for `playwright` are harmless; `sparq doctor` will warn to remove them
+- No `sparq.config.json` changes needed — `e2e.framework: 'playwright'` is unchanged
+- Run `sparq update` to apply the new agent/skill prompts
+
 ## [1.0.0]
 
 ### Added

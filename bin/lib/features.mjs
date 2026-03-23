@@ -120,12 +120,12 @@ export const FEATURE_GROUPS = deepFreeze({
     alwaysIncluded: false,
   },
 
-  'playwright-mcp': {
-    name: 'Playwright MCP',
-    description: 'Playwright browser automation via MCP server',
+  'playwright-cli': {
+    name: 'Playwright CLI',
+    description: 'Playwright browser verification via CLI commands',
     agents: [],
     skills: [],
-    mcpServers: ['playwright'],
+    mcpServers: [],
     templates: [],
     alwaysIncluded: false,
   },
@@ -184,7 +184,7 @@ export const PRESET_FEATURES = deepFreeze({
   all: ALL_FEATURE_NAMES,
   minimal: ['core'],
   'cypress-e2e': ['core', 'e2e'],
-  'e2e-only': ['core', 'e2e', 'playwright-mcp'],
+  'e2e-only': ['core', 'e2e', 'playwright-cli'],
   'full-qa': ALL_FEATURE_NAMES,
 })
 

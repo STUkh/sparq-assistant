@@ -220,7 +220,7 @@ describe('Doctor command integration', () => {
     )
   })
 
-  it('should exit 1 when .mcp.json is missing entirely', async () => {
+  it('should exit 0 when .mcp.json is missing for default playwright config', async () => {
     const mcpPath = join(tempDir, '.mcp.json')
     if (existsSync(mcpPath)) {
       unlinkSync(mcpPath)
@@ -228,11 +228,13 @@ describe('Doctor command integration', () => {
 
     const { stdout, exitCode } = await runCli(['doctor', tempDir])
 
-    assert.equal(exitCode, 1, 'Doctor should exit 1 when .mcp.json is missing')
-    assert.ok(
-      stdout.includes('MCP server missing') || stdout.includes('.mcp.json not found'),
-      'Should report missing MCP servers',
+    // With playwright-cli (no MCP), missing .mcp.json is not a hard failure
+    assert.equal(
+      exitCode,
+      0,
+      'Doctor should exit 0 — no required MCP servers for playwright config',
     )
+    assert.ok(stdout.includes('checks passed'), 'Should still report checks passed')
   })
 })
 

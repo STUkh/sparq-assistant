@@ -31,7 +31,7 @@ describe('error-handling-compliance rubric', () => {
   it('should pass when MCP error has [sparq] Retry signal', async () => {
     const evaluate = await loadRubric('error-handling-compliance')
     const content = `MCP error: connection timeout on playwright tool
-[sparq] Retry: Playwright MCP — attempt 2 of 3`
+[sparq] Retry: Playwright CLI — attempt 2 of 3`
     const result = evaluate(content, [])
     assert.ok(result.score >= 1, `Expected score >= 1, got ${result.score}`)
     assert.ok(!result.findings.some((f) => f.includes?.('Retry') || f.includes?.('retry signal')))
@@ -200,7 +200,7 @@ retry attempt 3 — backoff 8s
 
   it('should pass when 2 failures trigger circuit breaker OPEN signal', async () => {
     const evaluate = await loadRubric('error-handling-compliance')
-    const content = `2 failures in 60s for Playwright MCP
+    const content = `2 failures in 60s for Playwright CLI
 [sparq] Warning: circuit breaker OPEN — switching to manual verification`
     const result = evaluate(content, [])
     const finding = result.findings.find((f) => f.includes('no circuit breaker'))

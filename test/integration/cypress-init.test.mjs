@@ -72,7 +72,7 @@ describe('Cypress init lifecycle', { concurrency: false }, () => {
   it('Step 4: doctor runs and validates Cypress installation', async () => {
     const { stdout, exitCode } = await runCli(['doctor', tempDir])
 
-    // Doctor is framework-aware: skips Playwright MCP check for Cypress projects
+    // Doctor is framework-aware: skips Playwright CLI check for Cypress projects
     assert.equal(exitCode, 0, 'Doctor should exit 0 for valid Cypress installation')
     assert.ok(stdout.includes('checks passed'), 'Should show checks passed summary')
     assert.ok(stdout.length > 0, 'Doctor should produce output')

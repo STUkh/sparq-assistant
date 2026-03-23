@@ -20,7 +20,7 @@ Match user question to the right reference:
 - **Accessibility / axe / WCAG / keyboard / visual regression / screenshots** → Load `playwright-a11y-visual.md`
 - **Anti-patterns / common mistakes / bad practices / flaky tests** → Load `playwright-anti-patterns.md`
 - **POM / page objects / fixtures / locators / code generation** → Cross-ref `playwright-patterns.md` (existing)
-- **MCP browser tools / screenshots during generation** → Cross-ref `playwright-mcp-tools.md` (existing)
+- **MCP browser tools / screenshots during generation** → Cross-ref `playwright-cli-tools.md` (existing)
 - **Multiple topics or "full review"** → Load all references, present summary per domain
 
 ## Workflow
@@ -110,7 +110,7 @@ These best practices are consumed at multiple points in the SparQ workflow:
 - **Generation** (`/sparq:generate-e2e`): automation-engineer agent always loads `playwright-assertions.md` and `playwright-anti-patterns.md` for quality guardrails
 - **Validation** (`/sparq:validate`): test-validator cross-references anti-patterns during drift detection
 - **Consulting** (this skill): users access the full best practices library on demand
-- Existing code-level patterns in `playwright-patterns.md` and `playwright-mcp-tools.md` remain the primary generation references — this skill supplements, never replaces them
+- Existing code-level patterns in `playwright-patterns.md` and `playwright-cli-tools.md` remain the primary generation references — this skill supplements, never replaces them
 
 <done_criteria>
 1. `sparq.config.json` read; `e2e.framework` confirmed as `playwright` (or missing/default)
@@ -129,7 +129,7 @@ These best practices are consumed at multiple points in the SparQ workflow:
 - `.claude/skills/sparq-shared/references/playwright-a11y-visual.md` — axe-core, WCAG, keyboard, visual regression
 - `.claude/skills/sparq-shared/references/playwright-anti-patterns.md` — timing, selector, design, architecture, CI anti-patterns
 - `.claude/skills/sparq-shared/references/playwright-patterns.md` — code-level generation patterns (cross-ref, not loaded by default)
-- `.claude/skills/sparq-shared/references/playwright-mcp-tools.md` — MCP browser tools (cross-ref, not loaded by default)
+- `.claude/skills/sparq-shared/references/playwright-cli-tools.md` — CLI browser tools (cross-ref, not loaded by default)
 
 ## Usage
 

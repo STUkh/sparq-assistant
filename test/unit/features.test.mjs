@@ -114,7 +114,7 @@ describe('ALL_FEATURE_NAMES', () => {
       'testrail',
       'qase',
       'tms-local',
-      'playwright-mcp',
+      'playwright-cli',
       'export',
       'dev-tools',
       'playwright-best-practices',
@@ -154,10 +154,10 @@ describe('PRESET_FEATURES', () => {
     assert.deepEqual(PRESET_FEATURES.minimal, ['core'])
   })
 
-  it('"e2e-only" preset should contain core, e2e, and playwright-mcp', () => {
+  it('"e2e-only" preset should contain core, e2e, and playwright-cli', () => {
     assert.deepEqual(
       [...PRESET_FEATURES['e2e-only']].sort(),
-      ['core', 'e2e', 'playwright-mcp'].sort(),
+      ['core', 'e2e', 'playwright-cli'].sort(),
     )
   })
 
@@ -207,11 +207,11 @@ describe('resolveFeatures', () => {
     assert.equal(result.size, 1, 'minimal should resolve to only core')
   })
 
-  it('should resolve the "e2e-only" preset to core + e2e + playwright-mcp', () => {
+  it('should resolve the "e2e-only" preset to core + e2e + playwright-cli', () => {
     const result = resolveFeatures(['e2e-only'])
     assert.ok(result.has('core'), 'should include core')
     assert.ok(result.has('e2e'), 'should include e2e')
-    assert.ok(result.has('playwright-mcp'), 'should include playwright-mcp')
+    assert.ok(result.has('playwright-cli'), 'should include playwright-cli')
     assert.equal(result.size, 3)
   })
 
@@ -225,7 +225,7 @@ describe('resolveFeatures', () => {
     assert.equal(result.size, 3, 'should deduplicate overlapping features')
     assert.ok(result.has('core'))
     assert.ok(result.has('e2e'))
-    assert.ok(result.has('playwright-mcp'))
+    assert.ok(result.has('playwright-cli'))
   })
 
   it('should throw on unknown feature name', () => {
@@ -435,13 +435,13 @@ describe('getMcpServersForFeatures', () => {
     assert.ok(servers.includes('testrail'))
   })
 
-  it('should return playwright server for playwright-mcp feature', () => {
-    const features = resolveFeatures(['playwright-mcp'])
+  it('should return no MCP servers for playwright-cli feature', () => {
+    const features = resolveFeatures(['playwright-cli'])
     const servers = getMcpServersForFeatures(features)
-    assert.deepEqual(servers, ['playwright'])
+    assert.deepEqual(servers, [])
   })
 
-  it('should return all 6 servers for all features', () => {
+  it('should return all 5 servers for all features', () => {
     const features = resolveFeatures(['all'])
     const servers = getMcpServersForFeatures(features)
     assert.ok(servers.includes('atlassian'), 'should include atlassian')
@@ -449,8 +449,7 @@ describe('getMcpServersForFeatures', () => {
     assert.ok(servers.includes('testrail'), 'should include testrail')
     assert.ok(servers.includes('qase'), 'should include qase')
     assert.ok(servers.includes('zephyr'), 'should include zephyr')
-    assert.ok(servers.includes('playwright'), 'should include playwright')
-    assert.equal(servers.length, 6, 'should have exactly 6 unique servers')
+    assert.equal(servers.length, 5, 'should have exactly 5 unique servers')
   })
 
   it('should return qase server for qase feature', () => {
@@ -548,14 +547,14 @@ describe('PRESET_FEATURES — cypress-e2e preset', () => {
     assert.ok('cypress-e2e' in PRESET_FEATURES)
   })
 
-  it('should contain core and e2e without playwright-mcp', () => {
+  it('should contain core and e2e without playwright-cli', () => {
     assert.deepEqual([...PRESET_FEATURES['cypress-e2e']].sort(), ['core', 'e2e'].sort())
   })
 
-  it('should not include playwright-mcp in cypress-e2e preset', () => {
+  it('should not include playwright-cli in cypress-e2e preset', () => {
     assert.ok(
-      !PRESET_FEATURES['cypress-e2e'].includes('playwright-mcp'),
-      'cypress-e2e should not include playwright-mcp',
+      !PRESET_FEATURES['cypress-e2e'].includes('playwright-cli'),
+      'cypress-e2e should not include playwright-cli',
     )
   })
 })
@@ -572,8 +571,8 @@ describe('resolveFeatures — cypress-e2e preset', () => {
     assert.equal(result.size, 2)
   })
 
-  it('should not include playwright-mcp when resolving cypress-e2e', () => {
+  it('should not include playwright-cli when resolving cypress-e2e', () => {
     const result = resolveFeatures(['cypress-e2e'])
-    assert.ok(!result.has('playwright-mcp'), 'should not include playwright-mcp')
+    assert.ok(!result.has('playwright-cli'), 'should not include playwright-cli')
   })
 })

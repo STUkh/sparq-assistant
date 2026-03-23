@@ -37,10 +37,11 @@ describe('MCP config merging via init', () => {
     const mcpConfig = readJsonFile(tempDir, '.mcp.json')
     assert.ok(mcpConfig.mcpServers, '.mcp.json should have mcpServers key')
 
-    // Default non-interactive init only installs playwright (conditional MCP)
+    // Default non-interactive init no longer installs playwright as an MCP server
+    // (SparQ now uses Playwright CLI directly)
     assert.ok(
-      'playwright' in mcpConfig.mcpServers,
-      'MCP server "playwright" should be present in .mcp.json',
+      !('playwright' in mcpConfig.mcpServers),
+      'MCP server "playwright" should NOT be present — SparQ uses Playwright CLI now',
     )
   })
 
@@ -67,8 +68,11 @@ describe('MCP config merging via init', () => {
       'Pre-existing custom server should be preserved',
     )
 
-    // SparQ servers should be added (playwright always included)
-    assert.ok('playwright' in mcpConfig.mcpServers, 'Playwright server should be added')
+    // SparQ no longer adds playwright as an MCP server
+    assert.ok(
+      !('playwright' in mcpConfig.mcpServers),
+      'Playwright should NOT be added as MCP server — SparQ uses Playwright CLI now',
+    )
   })
 
   it('should not overwrite existing server with same name', async () => {

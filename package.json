@@ -1,6 +1,6 @@
 {
   "name": "sparq-assistant",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AI-powered QA test generation for Claude Code, Cursor, and Codex — generate Playwright and Cypress E2E suites from Jira, Figma, and Confluence requirements",
   "type": "module",
   "bin": {

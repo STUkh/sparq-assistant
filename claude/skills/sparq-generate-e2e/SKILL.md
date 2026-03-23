@@ -19,7 +19,7 @@ Config, version check, pattern rules, and E2E code generation preamble per `clau
 
 3. Scan E2E directories (from `e2e.structure.*` in config) for page objects, fixtures, helpers, auth patterns, test data strategies, framework config. Reuse everything possible; extend existing page objects rather than duplicating.
 4. **CHECKPOINT** -- Delegate to `sparq-automation-engineer` agent with full config context: `project.componentFileExtensions`, `e2e`, `project.sourceRoot`, `project.routeDiscoveryPattern`, `preferences.locatorPriority`. For >30 tests: split into parallel batches per `parallel-execution.md` Pattern 2. For parallel batching (>30 tests), TC IDs are pre-assigned per `parallel-execution.md` Pattern 2 to prevent ID collisions. For S3 with manual companion: launch automation-engineer + manual-test-writer as dual-agent per Pattern 4. Generate E2E test code matching configured framework. Present for review. **Wait for approval.**
-5. Optionally: run tests with the configured framework's CLI, debug with Playwright MCP browser (when `e2e.framework` is `playwright`). Files are already in the project E2E directory.
+5. Optionally: run tests with the configured framework's CLI, debug with Playwright CLI tools (when `e2e.framework` is `playwright`). Files are already in the project E2E directory.
 6. **Optional lint check**: After smoke verify passes, offer `sparq lint {e2e-directory}/` to validate generated files against 8 deterministic code-quality rubrics (locator quality, flaky patterns, assertion coverage, naming conventions). Instant, CI-compatible, zero model inference.
 
 **Chain**: requirements-analyst -> automation-engineer
@@ -34,9 +34,9 @@ When a bug ticket is provided instead of a feature ticket, the orchestrator acti
 - Existing page objects are reused and extended with new methods as needed
 - See `test-generation-patterns.md` "Bug Ticket Input Mode (S3)" for full conventions
 
-## Browser Verification (Playwright MCP)
+## Browser Verification (Playwright CLI)
 
-When `e2e.framework` is `playwright`: use Playwright MCP tools for navigation, DOM snapshots, interaction, and console/network inspection during debugging. See `mcp-tool-inventory.md` for full tool list. If unavailable, skip verification and note in output. See `degradation-strategy.md` for fallbacks. Not available for Cypress (no MCP); skip silently.
+When `e2e.framework` is `playwright`: use Playwright CLI for screenshots, accessibility snapshots, and inline verification scripts during debugging (e.g., `npx playwright screenshot <url> --output=<path>`). See `playwright-cli-tools.md` for full tool reference. If unavailable, skip verification and note in output. See `degradation-strategy.md` for fallbacks. Not available for Cypress; skip silently.
 
 ## Fallback Behavior
 
@@ -73,7 +73,7 @@ Files are written directly to the project E2E directory per `e2e.structure.*` co
 - `.claude/skills/sparq-shared/references/pattern-adherence.md`
 - `.claude/skills/sparq-shared/references/parallel-execution.md`
 - `.claude/skills/sparq-shared/references/degradation-strategy.md`
-- `.claude/skills/sparq-shared/references/mcp-tool-inventory.md`
+- `.claude/skills/sparq-shared/references/playwright-cli-tools.md`
 
 ## Usage
 
@@ -95,6 +95,6 @@ Examples:
 -> scans e2e/ (auth fixture reusable, baseURL from config)
 -> CHECKPOINT: 20 tests in 3 files (LoginPage.ts, login.spec.ts, loginFixture.ts)
 -> writes files directly to project E2E directory per e2e.structure.* config
--> optionally verifies via Playwright MCP browser (when e2e.framework is playwright)
+-> optionally verifies via Playwright CLI (when e2e.framework is playwright)
 -> output: e2e/pages/LoginPage.ts, e2e/specs/login.spec.ts, e2e/fixtures/loginFixture.ts
 ```

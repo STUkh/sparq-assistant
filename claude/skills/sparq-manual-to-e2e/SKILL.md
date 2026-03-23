@@ -30,14 +30,14 @@ Config, version check, pattern rules, and E2E code generation preamble per `clau
 4. **CHECKPOINT** -- Clarify ambiguities: test data requirements, auth needs, unresolved UI elements, API mocking vs real backend. **Wait for answers.**
 5. **CHECKPOINT** -- Delegate to `sparq-automation-engineer` agent with tech context: `project.componentFileExtensions`, `e2e`, `project.sourceRoot`, `project.routeDiscoveryPattern`, `preferences.locatorPriority`. Present generated code. **Wait for approval.**
 5b. **Source preservation**: The manual-to-e2e conversion does NOT delete or modify source manual test files. If the user requests cleanup of source files after conversion, present a removal checkpoint per `tms-abstraction.md` `<removal_policy>` before any deletion.
-6. Optionally verify with Playwright MCP browser (see "Verification via Playwright MCP" below)
+6. Optionally verify with Playwright CLI (see "Browser Verification (Playwright CLI)" below)
 7. **Optional lint check**: After files are written and smoke verify passes, offer `sparq lint {e2e-directory}/` to validate converted tests against 8 deterministic code-quality rubrics (locator quality, flaky patterns, assertion coverage, naming conventions). Instant, CI-compatible, zero model inference.
 
 **Delegation**: sparq-automation-engineer agent (with full tech context from config)
 
-## Browser Verification (Playwright MCP)
+## Browser Verification (Playwright CLI)
 
-When `e2e.framework` is `playwright`: navigate to target URL, snapshot DOM to verify selectors, screenshot for visual confirmation. See `mcp-tool-inventory.md` for tools. If unavailable, skip and note: `"[sparq] Browser verification skipped -- Playwright MCP unavailable or E2E framework is not Playwright"`.
+When `e2e.framework` is `playwright`: navigate to target URL, take accessibility snapshot and screenshot for selector and visual confirmation (e.g., `npx playwright screenshot <url> --output=<path>`). See `playwright-cli-tools.md` for tools. If unavailable, skip and note: `"[sparq] Browser verification skipped -- Playwright CLI unavailable or E2E framework is not Playwright"`.
 
 ## Output
 
@@ -68,7 +68,7 @@ Generated specs follow project conventions from step 2. If no existing patterns,
 - `.claude/skills/sparq-shared/references/test-generation-patterns.md`
 - `.claude/skills/sparq-shared/references/pattern-adherence.md`
 - `.claude/skills/sparq-shared/references/degradation-strategy.md`
-- `.claude/skills/sparq-shared/references/mcp-tool-inventory.md`
+- `.claude/skills/sparq-shared/references/playwright-cli-tools.md`
 - `.claude/skills/sparq-shared/references/testrail-formats.md`
 - `.claude/skills/sparq-shared/references/qase-formats.md`
 - `.claude/skills/sparq-shared/references/tms-abstraction.md`
@@ -97,7 +97,7 @@ Examples:
 -> CHECKPOINT: 2 clarifications needed (admin role setup, edge case data)
 -> generates LoginPage.ts + login.spec.ts (18 automated, 8 skipped manual-only)
 -> writes files directly to project E2E directory per e2e.structure.* config
--> verifies selectors via Playwright MCP browser snapshot (when e2e.framework is playwright)
+-> verifies selectors via Playwright CLI screenshot + accessibility snapshot (when e2e.framework is playwright)
 -> output: e2e/pages/LoginPage.ts, e2e/specs/login.spec.ts
 ```
 

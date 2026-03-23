@@ -4,6 +4,7 @@ import {
   copyFileSync,
   existsSync,
   readdirSync,
+  readFileSync,
   rmSync,
   statSync,
   unlinkSync,
@@ -91,7 +92,7 @@ function deriveFeatures(gathered, e2eFramework) {
   if (e2eFramework === 'cypress') {
     names.push('cypress-best-practices')
   } else {
-    names.push('playwright-mcp', 'playwright-best-practices')
+    names.push('playwright-cli', 'playwright-best-practices')
   }
   if (gathered.jiraEnabled) names.push('jira')
   if (gathered.confluenceEnabled) names.push('confluence')
@@ -729,6 +730,35 @@ function deleteInitCheckpoint(targetDir) {
   }
 }
 
+/**
+ * Validate/sanitize an existing .mcp.json that contains no new servers to merge.
+ * If the file has invalid JSON, backs it up and replaces it with an empty config.
+ */
+function sanitizeExistingMcpJson(mcpPath) {
+  let mcpRaw
+  try {
+    mcpRaw = readFileSync(mcpPath, 'utf-8')
+  } catch {
+    return
+  }
+  try {
+    JSON.parse(mcpRaw)
+    info('.mcp.json preserved (no MCP servers selected)')
+  } catch {
+    warn('.mcp.json exists but is not valid JSON — saving to .mcp.json.broken')
+    try {
+      if (!isDryRun()) copyFileSync(mcpPath, `${mcpPath}.broken`)
+    } catch {
+      warn('.mcp.json.broken backup could not be created — original will be overwritten')
+    }
+    dryRun(
+      () => writeFileSync(mcpPath, `${JSON.stringify({ mcpServers: {} }, null, 2)}\n`, 'utf-8'),
+      `write .mcp.json to ${toForwardSlash(mcpPath)}`,
+    )
+    ok('.mcp.json replaced (was invalid JSON)')
+  }
+}
+
 // ---------------------------------------------------------------------------
 
 /**
@@ -771,7 +801,7 @@ function runInstallPipeline(targetDir, claudeDir, gathered, features, ciProvider
     )
     ok('.mcp.json created (no MCP servers selected)')
   } else {
-    info('.mcp.json preserved (no MCP servers selected)')
+    sanitizeExistingMcpJson(mcpPath)
   }
 
   // Permissions setup (I4)

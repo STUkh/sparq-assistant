@@ -48,7 +48,9 @@ export function migrateConfig(config) {
       currentVersion = migration.target
     }
 
-    config.version = VERSION
+    // Only stamp the package version if at least one migration actually ran;
+    // avoids overwriting the version when config is already current.
+    if (iterations > 0) config.version = VERSION
   } catch (err) {
     config.version = originalVersion
     throw err

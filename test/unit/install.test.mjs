@@ -208,9 +208,8 @@ describe('getSparqMcpServerNames', () => {
     const names = getSparqMcpServerNames()
     assert.ok(Array.isArray(names), 'should return an array')
     assert.ok(names.length > 0, 'should have at least one server name')
-    // The mcp/ directory contains atlassian, figma, playwright, testrail configs
+    // The mcp/ directory contains atlassian, figma, testrail configs (playwright removed)
     assert.ok(names.includes('atlassian'), 'should include atlassian')
-    assert.ok(names.includes('playwright'), 'should include playwright')
   })
 
   it('should return unique server names', () => {

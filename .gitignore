@@ -49,3 +49,6 @@ test/evals/data/reflections/
 test/evals/data/tune-history/
 test/evals/data/.optimize-pending
 # baselines/ is committed (gold standard, shared across team)
+
+# AI agents related assistants
+.omc/

@@ -39,7 +39,7 @@ MCP connection errors — explain what the connection does, then offer fallback:
 - Jira unavailable: "Jira connection unavailable (reads requirements from your tickets). Fallback: paste the ticket requirements here, or provide a local file."
 - Confluence unavailable: "Confluence connection unavailable (reads specifications from your pages). Proceeding without Confluence data — coverage may have gaps."
 - Figma unavailable: "Figma connection unavailable (reads UI designs for selectors). Falling back to scanning your codebase for data-testid attributes."
-- Playwright MCP unavailable: "Browser connection unavailable (verifies selectors in a real browser). Relying on codebase analysis only — manual verification recommended."
+- Playwright CLI unavailable: "Playwright not installed (used for browser verification). Relying on codebase analysis only — install with `npm i -D @playwright/test && npx playwright install`."
 - TestRail/Qase unavailable: "Test management connection unavailable. Export skipped — results saved locally at .sparq/test-cases/."
 
 General error patterns:

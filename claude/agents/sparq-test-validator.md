@@ -23,7 +23,7 @@ Read at startup:
 - `.claude/skills/sparq-shared/references/resume-protocol-agent.md` -- config snapshot path, write prohibition
 
 Read only when `e2e.framework: 'playwright'` (default):
-- `.claude/skills/sparq-shared/references/playwright-mcp-tools.md` -- MCP browser tool patterns
+- `.claude/skills/sparq-shared/references/playwright-cli-tools.md` -- CLI browser tool patterns
 - `.claude/skills/sparq-shared/references/playwright-anti-patterns.md` -- timing, selector, design anti-patterns to detect
 
 Read only when `e2e.framework: 'cypress'`:
@@ -206,7 +206,7 @@ When user approves fixes (via orchestrator checkpoint):
 
 ### Browser Preview (optional)
 
-Browser preview via Playwright MCP -- available only when `e2e.framework: 'playwright'`. Screenshot pages during validation to confirm selector drift. Use `mcp__playwright__browser_screenshot`. For Cypress, skip browser verification. Skip silently if MCP unavailable.
+Browser preview via Playwright CLI -- available only when `e2e.framework: 'playwright'`. Screenshot pages during validation to confirm selector drift. Use `npx playwright screenshot <url> --output=<path>`. For Cypress, skip browser verification. Skip silently if Playwright not installed.
 
 ## Error Handling
 

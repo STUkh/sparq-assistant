@@ -183,7 +183,9 @@ describe('platform — installPlatformExtras (cursor)', () => {
     writeFileSync(
       join(tempDir, '.mcp.json'),
       JSON.stringify({
-        mcpServers: { playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] } },
+        mcpServers: {
+          playwright: { command: 'npx', args: ['-y', '@anthropic-ai/some-mcp@latest'] },
+        },
       }),
     )
   })
@@ -230,7 +232,9 @@ describe('platform — installPlatformExtras (codex)', () => {
     writeFileSync(
       join(tempDir, '.mcp.json'),
       JSON.stringify({
-        mcpServers: { playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] } },
+        mcpServers: {
+          playwright: { command: 'npx', args: ['-y', '@anthropic-ai/some-mcp@latest'] },
+        },
       }),
     )
   })
@@ -316,7 +320,7 @@ describe('platform — cursor MCP merge safety', () => {
       join(tempDir, '.mcp.json'),
       JSON.stringify({
         mcpServers: {
-          playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
+          playwright: { command: 'npx', args: ['-y', '@anthropic-ai/some-mcp@latest'] },
           atlassian: { url: 'https://mcp.atlassian.com' },
         },
       }),
@@ -451,7 +455,9 @@ describe('platform — codex MCP merge safety', () => {
     writeFileSync(
       join(tempDir, '.mcp.json'),
       JSON.stringify({
-        mcpServers: { playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] } },
+        mcpServers: {
+          playwright: { command: 'npx', args: ['-y', '@anthropic-ai/some-mcp@latest'] },
+        },
       }),
     )
   })

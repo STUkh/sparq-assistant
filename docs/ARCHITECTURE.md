@@ -13,7 +13,7 @@ flowchart TD
   RA --> Conf[Confluence MCP]
   RA --> Figma[Figma MCP]
   AE --> Figma
-  AE --> PW[Playwright MCP]
+  AE --> PW[Playwright CLI]
   TV --> Figma
   TV --> PW
   Orch --> TR[TestRail MCP]
@@ -40,18 +40,18 @@ Data flows from user commands through the orchestrator, which dispatches work to
 | **Atlassian (Jira)** | HTTP | X | -- | -- | -- | -- |
 | **Atlassian (Confluence)** | HTTP | X | -- | -- | -- | -- |
 | **Figma** | HTTP | X | -- | X | X | -- |
-| **Playwright** | stdio | -- | -- | X | X | -- |
+| **Playwright** | CLI | -- | -- | X | X | -- |
 | **TestRail** | stdio | -- | -- | -- | -- | X |
 | **Qase** | stdio | -- | -- | -- | -- | X |
 | **Zephyr Scale** | stdio | -- | -- | -- | -- | X |
 
-> **Note:** manual-test-writer has no direct MCP access — it consumes the structured requirements document produced by requirements-analyst. For bug ticket inputs, automation-engineer receives bug ticket data via orchestrator handoff and appends regression tests inline to the relevant feature spec. test-validator reads local requirements docs and compares against Figma/Playwright for coverage checks but does not query Jira directly.
+> **Note:** manual-test-writer has no direct MCP access — it consumes the structured requirements document produced by requirements-analyst. For bug ticket inputs, automation-engineer receives bug ticket data via orchestrator handoff and appends regression tests inline to the relevant feature spec. test-validator reads local requirements docs and compares against Figma designs and Playwright CLI output for coverage checks but does not query Jira directly.
 
 **Connection details:**
 
 - **Atlassian** -- `https://mcp.atlassian.com/v1/mcp` (HTTP, OAuth)
 - **Figma** -- `https://mcp.figma.com/mcp` (HTTP, OAuth)
-- **Playwright** -- `npx -y @playwright/mcp@latest` (stdio, local)
+- **Playwright** -- Playwright CLI (`npx playwright`, local dev dependency)
 - **TestRail** -- `npx -y @bun913/mcp-testrail` (stdio, env vars)
 - **Qase** -- `npx -y @qase/mcp-server` (stdio, env vars)
 - **Zephyr Scale** -- `npx -y @anthropic/zephyr-mcp` (stdio, env vars)
