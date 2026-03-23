@@ -55,9 +55,9 @@ Accept multiple ticket IDs: `/sparq:generate EP-142 EP-143 EP-144`
 
 5 canonical categories (HP, VE, SEC, EC, A11Y) -- see `data-model.md` "Test Category Naming" for mapping and `test-generation-patterns.md` for per-category checklists.
 
-## Browser Verification (Playwright MCP)
+## Browser Verification (Playwright CLI)
 
-When `e2e.framework` is `playwright`: use Playwright MCP tools for navigation, DOM snapshots, interaction, and console/network inspection during debugging. See `mcp-tool-inventory.md` for full tool list. If unavailable, skip verification and note in output. See `degradation-strategy.md` for fallbacks.
+When `e2e.framework` is `playwright`: use Playwright CLI for screenshots, accessibility snapshots, and inline verification scripts during debugging (e.g., `npx playwright screenshot <url> --output=<path>`). See `playwright-cli-tools.md` for full tool reference. If unavailable, skip verification and note in output. See `degradation-strategy.md` for fallbacks.
 
 ## Fallback Behavior
 
@@ -95,7 +95,7 @@ Manual test cases go to `.sparq/test-cases/`. E2E code is written directly to th
 - `.claude/skills/sparq-shared/references/playwright-patterns.md`, `cypress-patterns.md`, `e2e-common-patterns.md`
 - `.claude/skills/sparq-shared/references/pattern-adherence.md`
 - `.claude/skills/sparq-shared/references/degradation-strategy.md`
-- `.claude/skills/sparq-shared/references/mcp-tool-inventory.md`
+- `.claude/skills/sparq-shared/references/playwright-cli-tools.md`
 
 ## Usage
 

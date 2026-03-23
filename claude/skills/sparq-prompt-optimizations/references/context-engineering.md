@@ -58,7 +58,7 @@ Load at startup:
 - handoff-schema.md, pattern-adherence.md, e2e-common-patterns.md
 
 Read only when e2e.framework: 'playwright':
-- playwright-patterns.md, playwright-mcp-tools.md, playwright-assertions.md
+- playwright-patterns.md, playwright-cli-tools.md, playwright-assertions.md
 
 Read only when generating >= 10 test cases:
 - context-anchoring.md

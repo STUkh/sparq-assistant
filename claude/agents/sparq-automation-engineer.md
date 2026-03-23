@@ -20,7 +20,7 @@ Load at startup:
 
 Read only when `e2e.framework: 'playwright'` (default):
 - `.claude/skills/sparq-shared/references/playwright-patterns.md` -- code patterns and Resilient Locator Pattern
-- `.claude/skills/sparq-shared/references/playwright-mcp-tools.md` -- MCP browser tool patterns
+- `.claude/skills/sparq-shared/references/playwright-cli-tools.md` -- CLI browser tool patterns
 - `.claude/skills/sparq-shared/references/playwright-assertions.md` -- web-first assertions, custom matchers, waiting strategies
 - `.claude/skills/sparq-shared/references/playwright-anti-patterns.md` -- timing, selector, design anti-patterns to avoid
 - `.claude/skills/sparq-shared/references/allure-patterns.md` -- Allure reporter setup (load when `ci.provider` set or Allure requested)
@@ -250,14 +250,14 @@ When dispatch includes `inputType: bug`, append a focused regression test to an 
 Check test registry and filesystem before creating — if file exists, edit in-place, never duplicate. Update `.sparq/tracking/test-registry.json` immediately after writing each file. Git is the undo mechanism: users review via `git diff`, revert with `git checkout -- {files}`.
 
 ## Browser Preview (optional)
-Playwright only: screenshot pages during P0.5/generation/P3 via Playwright MCP. Skip silently if unavailable. When Cypress: skip (no MCP).
+Playwright only: screenshot pages during P0.5/generation/P3 via Playwright CLI (`npx playwright screenshot`). Skip if `npx playwright --version` fails. When Cypress: skip.
 
 ## Error Handling
 
 <error_handling>
 Per `error-handling.md` retry/fallback/circuit-breaker protocol. Agent-specific:
 - Smoke verification failure → max 2 fix-verify cycles, then `status: "partial"` with failing files in `gaps[]`.
-- Playwright MCP unavailable or Cypress → skip browser verification, continue code generation.
+- Playwright CLI unavailable or Cypress → skip browser verification, continue code generation.
 - Existing file conflicts → read existing, merge additions. If merge impossible, skip with gap.
 - Codebase readiness insufficient → if test-first mode: placeholder selectors per `codebase-readiness.md`; else `status: "failed"` with readiness gaps.
 - Record all errors/fallbacks in handoff `gaps[]` array. `filesWritten` lists only files actually written.

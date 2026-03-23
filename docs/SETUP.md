@@ -31,9 +31,8 @@
 | Atlassian | Requirement gathering from Jira/Confluence | OAuth (auto-prompted) |
 | TestRail | Exporting test cases | API key (env vars) |
 | Qase | Exporting test cases | API token (env var) |
-| Playwright | Browser verification, selector testing | None (local) |
 
-No MCP servers are required. SparQ degrades gracefully when servers are unavailable.
+No MCP servers are required. SparQ degrades gracefully when servers are unavailable. Playwright uses the CLI directly (`@playwright/test` dev dependency) — no MCP server needed.
 
 ## Quick Install
 
@@ -124,7 +123,7 @@ npx sparq-assistant init --features=e2e,jira,figma
 | `confluence` | Confluence integration via Atlassian MCP server |
 | `figma` | Figma design integration via Figma MCP server |
 | `testrail` | TestRail export via TestRail MCP server |
-| `playwright-mcp` | Playwright browser automation via MCP server |
+| `playwright-cli` | Playwright browser verification via CLI commands |
 | `qase` | Qase export via Qase MCP server |
 | `export` | Export skill for pushing artifacts to external systems |
 | `e2e` | E2E test generation, validation, and sync (includes bug ticket regression via S3) |
@@ -136,7 +135,7 @@ npx sparq-assistant init --features=e2e,jira,figma
 |--------|----------|
 | `all` / `full-qa` | All features |
 | `minimal` | Core only |
-| `e2e-only` | Core + E2E + Playwright MCP |
+| `e2e-only` | Core + E2E + Playwright CLI |
 
 ### 6. CI Workflow Generation (Optional)
 
@@ -242,13 +241,13 @@ Then source it before launching Claude Code: `source .env && claude`
 
 **How to generate an API token:** Qase > Workspace Settings > API tokens > Create new token.
 
-### Playwright
+### Playwright CLI
 
-- **Type:** stdio -- `npx -y @playwright/mcp@latest`
-- **Auth:** None (runs locally)
-- **Source:** `mcp/playwright.json` (merged into your `.mcp.json` during init)
-- **Environment variables:** None required
-- Runs a local Chromium browser for selector verification and debugging.
+- **Playwright CLI**: Requires `@playwright/test` as a dev dependency in the target project. No MCP server needed.
+  ```bash
+  npm install -D @playwright/test
+  npx playwright install chromium
+  ```
 
 ## Required Environment Variables Summary
 
@@ -330,21 +329,15 @@ List the test suites in Qase project "MYPROJECT".
 
 Expected: Claude invokes the Qase MCP tool and returns suite data. If you see an authentication error, double-check your `QASE_API_TOKEN`.
 
-### Verify Playwright
+### Verify Playwright CLI
 
-In a Claude Code session:
-
-```
-Use the Playwright MCP to navigate to https://example.com and take a screenshot.
-```
-
-Expected: Claude launches a local Chromium browser, navigates to the URL, and returns a screenshot. No authentication required.
-
-You can also verify the package is available:
+Confirm Playwright is installed in your project:
 
 ```bash
-npx -y @playwright/mcp@latest --help
+npx playwright --version
 ```
+
+Expected: a version string like `Version 1.x.x`. If not found, run `npm install -D @playwright/test && npx playwright install`.
 
 ## Troubleshooting MCP
 
@@ -356,11 +349,10 @@ npx -y @playwright/mcp@latest --help
 |-------|---------|-----|
 | Node.js version | `node --version` | Must be >= 22.0.0 |
 | npx available | `npx --version` | Comes with npm; reinstall Node.js if missing |
-| Package resolvable | `npx -y @playwright/mcp@latest --help` | Check network; try `npm cache clean --force` |
 | .mcp.json exists | `cat .mcp.json` | Re-run `npx sparq-assistant init` |
-| Server entry present | `cat .mcp.json \| grep playwright` | Re-run `npx sparq-assistant update` |
+| Playwright CLI not found | `npx playwright --version` | Run `npm install -D @playwright/test && npx playwright install` |
 
-For stdio servers (TestRail, Playwright), verify the command runs standalone:
+For stdio servers (TestRail, Qase), verify the command runs standalone:
 
 ```bash
 # TestRail -- should print usage or start the server
@@ -368,9 +360,6 @@ npx -y @bun913/mcp-testrail
 
 # Qase -- should print usage or start the server
 npx -y @qase/mcp-server
-
-# Playwright -- should print help
-npx -y @playwright/mcp@latest --help
 ```
 
 ### Authentication Failures
@@ -411,7 +400,7 @@ npx -y @playwright/mcp@latest --help
 
 **Symptoms:** Claude says it cannot find a tool like `mcp__atlassian__jira_get_issue`.
 
-- **Server name mismatch:** The server key in `.mcp.json` must match what Claude Code expects. Verify with `cat .mcp.json` -- keys should be `atlassian`, `figma`, `testrail`, `playwright` (lowercase, no prefix).
+- **Server name mismatch:** The server key in `.mcp.json` must match what Claude Code expects. Verify with `cat .mcp.json` -- keys should be `atlassian`, `figma`, `testrail`, `qase`, `zephyr` (lowercase, no prefix). Note: Playwright no longer uses an MCP server.
 - **Server not running:** Restart Claude Code. MCP servers are started when Claude Code launches.
 - **Stale config:** Run `npx sparq-assistant update` to re-merge MCP configs, then restart Claude Code.
 - **Wrong .mcp.json location:** The file must be in your project root (same directory as `sparq.config.json`).
@@ -575,7 +564,7 @@ Sample output:
 [dry-run] Would create: .claude/skills/sparq-refactor/SKILL.md
 [dry-run] Would create: .claude/skills/sparq-shared/references/ (36 files)
 [dry-run] Would create: .claude/templates/ (11 files)
-[dry-run] Would merge into: .mcp.json (adding: atlassian, figma, playwright, testrail, qase)
+[dry-run] Would merge into: .mcp.json (adding: atlassian, figma, testrail, qase)
 [dry-run] Would create: sparq.config.json
 [dry-run] Would append to: CLAUDE.md
 [dry-run] Would append to: .gitignore
@@ -630,7 +619,7 @@ npx sparq-assistant doctor
 
 - **Agent files** -- all `.md` definitions exist in `.claude/agents/`
 - **Skill directories** -- all skill folders in `.claude/skills/`
-- **MCP servers** -- `.mcp.json` has `atlassian`, `figma`, `playwright`, `testrail`, `qase` entries (per enabled features)
+- **MCP servers** -- `.mcp.json` has `atlassian`, `figma`, `testrail`, `qase` entries (per enabled features; Playwright uses CLI, no MCP entry)
 - **Config file** -- `sparq.config.json` exists and is valid JSON
 - **e2e structure** -- `e2e/` exists and `e2e.detected` is populated
 - **Project settings** -- `project.sourceRoot`, `project.componentFileExtensions` populated from detection

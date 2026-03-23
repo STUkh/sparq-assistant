@@ -33,11 +33,10 @@ function getConfigFramework(targetDir) {
  */
 function getRequiredServers(targetDir) {
   const configPath = join(targetDir, 'sparq.config.json')
-  if (!existsSync(configPath)) return ['playwright']
+  if (!existsSync(configPath)) return []
   try {
     const config = JSON.parse(readFileSync(configPath, 'utf-8'))
-    const framework = config.e2e?.framework || 'playwright'
-    const servers = framework === 'cypress' ? [] : ['playwright']
+    const servers = []
     if (config.sources?.jira?.enabled || config.sources?.confluence?.enabled) {
       servers.push('atlassian')
     }
@@ -47,7 +46,7 @@ function getRequiredServers(targetDir) {
     if (config.outputs?.tms?.provider === 'zephyr') servers.push('zephyr')
     return servers
   } catch {
-    return ['playwright']
+    return []
   }
 }
 
@@ -68,6 +67,11 @@ function checkMcpServers(targetDir, ctx) {
     const servers = mcpData.mcpServers || {}
     for (const srv of requiredServers) {
       ctx.check(srv in servers, `MCP server: ${srv}`, `MCP server missing: ${srv}`)
+    }
+    if (servers.playwright) {
+      warn(
+        'Playwright MCP server entry found in .mcp.json — this is no longer needed. SparQ now uses Playwright CLI directly. You can safely remove the "playwright" entry.',
+      )
     }
   } catch {
     ctx.total += requiredServers.length
@@ -236,9 +240,6 @@ const MCP_SERVER_CHECKS = {
   },
   figma: {
     type: 'url',
-  },
-  playwright: {
-    type: 'command',
   },
   testrail: {
     type: 'command',
@@ -635,6 +636,34 @@ function checkPlatformHealth(effectiveDir, ctx) {
   }
 }
 
+function checkPlaywrightCli(targetDir, ctx) {
+  const framework = getConfigFramework(targetDir)
+  if (framework !== 'playwright') return
+
+  const pkgPath = join(targetDir, 'package.json')
+  if (!existsSync(pkgPath)) {
+    ctx.warnCheck(false, '', 'package.json not found — cannot verify Playwright installation')
+    return
+  }
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
+    const hasPw =
+      (pkg.dependencies && '@playwright/test' in pkg.dependencies) ||
+      (pkg.devDependencies && '@playwright/test' in pkg.devDependencies)
+    ctx.warnCheck(
+      hasPw,
+      'Playwright installed (found @playwright/test in package.json)',
+      '@playwright/test not found in package.json — run: npm install -D @playwright/test',
+    )
+  } catch {
+    ctx.warnCheck(
+      false,
+      '',
+      'package.json could not be parsed — cannot verify Playwright installation',
+    )
+  }
+}
+
 export async function cmdDoctor(targetDir, options = {}) {
   // When --workspace is given, check the workspace subdirectory but note it
   const workspacePath = options.workspace ? join(targetDir, options.workspace) : null
@@ -666,6 +695,7 @@ export async function cmdDoctor(targetDir, options = {}) {
   checkAgents(effectiveDir, ctx)
   checkSkills(effectiveDir, ctx)
   checkMcpServers(effectiveDir, ctx)
+  checkPlaywrightCli(effectiveDir, ctx)
   checkConfig(effectiveDir, ctx)
   checkE2ESetup(effectiveDir, ctx)
   checkOutputDirs(effectiveDir, ctx)

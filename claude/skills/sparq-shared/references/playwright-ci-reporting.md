@@ -1,7 +1,7 @@
 # Playwright CI, Reporting & Performance Reference
 
 > Playwright-specific. Consumed by sparq-playwright-best-practices skill.
-> For Cypress CI patterns, see `cypress-advanced.md`. For Playwright locator/page-object/fixture patterns, see `playwright-patterns.md`. For MCP workflows, see `playwright-mcp-tools.md`.
+> For Cypress CI patterns, see `cypress-advanced.md`. For Playwright locator/page-object/fixture patterns, see `playwright-patterns.md`. For CLI verification workflows, see `playwright-cli-tools.md`.
 
 ## Parallelism and Sharding
 

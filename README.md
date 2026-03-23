@@ -218,7 +218,7 @@ e2e/
 | Study existing page objects and fixtures manually | Pattern-matched from your codebase |
 | Write page object from scratch | Generated, extending your real base class |
 | Write spec file with test cases | 5 test categories: HP, VE, SEC, EC, A11Y |
-| Fix selectors, re-run, fix again | Validated against live DOM via Playwright MCP |
+| Fix selectors, re-run, fix again | Validated against live DOM via Playwright CLI |
 | Copy test cases into TestRail manually | `/sparq:export` — direct API push |
 | Requirements changed? Rewrite tests | `/sparq:sync EP-14 e2e/specs/auth/` — auto-diffs and updates |
 | Found a bug? Write regression test from scratch | `/sparq:generate-e2e BUG-42` — auto-detected as bug ticket, appended inline with `REG-` ID |
@@ -352,7 +352,7 @@ After `sparq-assistant init`, settings live in `sparq.config.json` — auto-gene
 
 ## MCP Integrations
 
-Optional MCP servers — Atlassian (Jira + Confluence), Figma, Playwright, TestRail, Qase, Zephyr Scale. All auto-configured during `sparq init`.
+Optional MCP servers — Atlassian (Jira + Confluence), Figma, TestRail, Qase, Zephyr Scale. All auto-configured during `sparq init`. Playwright uses CLI directly (no MCP server needed).
 
 > When unavailable, SparQ degrades gracefully — falls back to user input, local files, or codebase analysis. Details: **[docs/SETUP.md](docs/SETUP.md)**
 

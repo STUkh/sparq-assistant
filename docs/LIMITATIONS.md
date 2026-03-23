@@ -9,7 +9,7 @@ Each MCP server is optional. When unavailable, SparQ degrades gracefully:
 | **Atlassian (Jira)** | Ticket extraction, acceptance criteria | Prompts user to paste requirements or provide local file |
 | **Atlassian (Confluence)** | Spec pages, business rules, user journeys | Skips source, documents gap, continues with others |
 | **Figma** | UI element extraction, selector enrichment | Falls back to codebase grep for `data-testid` and `aria-label` |
-| **Playwright** | Live DOM verification, selector testing | Skips verification; tests must be run manually |
+| **Playwright CLI** | Live DOM verification, selector testing | Skips verification; install `@playwright/test` as dev dependency for full coverage |
 | **TestRail** | Direct API export of test cases | Falls back to XML generation with import instructions |
 | **Qase** | Direct API export of test cases | Falls back to local file generation with import instructions |
 
@@ -116,7 +116,7 @@ If all MCP servers are unavailable, SparQ still works with local files and user-
 | Non-English requirements | Translate key acceptance criteria or provide bilingual summary |
 | Cross-project dependencies | Run SparQ per project, link test cases in TestRail manually |
 | Visual regression needed | Generate functional tests, add `expect(page).toHaveScreenshot()` manually |
-| S4 without MCP servers | S4 still runs ~60% of checks via codebase analysis; add Playwright MCP for full coverage |
+| S4 without MCP servers | S4 still runs ~60% of checks via codebase analysis; install Playwright as a dev dependency for full coverage |
 | Cypress project | Set `e2e.framework: "cypress"` in config; all scenarios generate Cypress code |
 | Bug needs regression test | `/sparq:generate-e2e BUG-142` — orchestrator auto-detects bug ticket, appends inline `REG-` test |
 | Renamed component in codebase | `/sparq:refactor --from "OldName" --to "NewName" e2e/` |

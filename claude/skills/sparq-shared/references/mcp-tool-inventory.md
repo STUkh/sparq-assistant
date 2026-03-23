@@ -142,65 +142,23 @@ If a tool name fails, the server key in `.mcp.json` may differ. Check `.mcp.json
 
 ## Playwright
 
-**Server**: `playwright` | **Type**: stdio | **Package**: `@playwright/mcp@latest`
-**Config**: `mcp/playwright.json`
-**Status**: Verified (all 22 tools confirmed via ToolSearch)
+**Status**: Removed (replaced by Playwright CLI)
 
-### Navigation (3 tools)
+Playwright browser verification now uses CLI commands (`npx playwright screenshot`, `npx playwright test`, inline Node scripts) instead of the `@playwright/mcp` server. See `playwright-cli-tools.md` for workflow patterns.
 
-<playwright_navigation>
-- `mcp__playwright__browser_navigate` (url: string): Navigate to a URL. Used by: sparq-sync, qa-e2e-playwright
-- `mcp__playwright__browser_navigate_back` (none): Navigate back in history. Used by: qa-e2e-playwright
-- `mcp__playwright__browser_tabs` (none): List open browser tabs. Used by: qa-e2e-playwright
-</playwright_navigation>
-
-### Interaction (9 tools)
-
-<playwright_interaction>
-- `mcp__playwright__browser_click` (element: string, ref: string): Click an element. Used by: sparq-sync, qa-e2e-playwright
-- `mcp__playwright__browser_hover` (element: string, ref: string): Hover over an element. Used by: qa-e2e-playwright
-- `mcp__playwright__browser_drag` (startElement, startRef, endElement, endRef): Drag element to target. Used by: qa-e2e-playwright
-- `mcp__playwright__browser_type` (text: string, element?: string, ref?: string): Type text into element. Used by: sparq-sync, qa-e2e-playwright
-- `mcp__playwright__browser_press_key` (key: string): Press a keyboard key. Used by: qa-e2e-playwright
-- `mcp__playwright__browser_select_option` (element: string, ref: string, values: string[]): Select dropdown option. Used by: sparq-sync, qa-e2e-playwright
-- `mcp__playwright__browser_fill_form` (values: array): Fill multiple form fields. Used by: sparq-sync, qa-e2e-playwright
-- `mcp__playwright__browser_file_upload` (paths: string[], ref: string): Upload file to input. Used by: qa-e2e-playwright
-- `mcp__playwright__browser_handle_dialog` (accept: boolean, promptText?: string): Handle browser dialog. Used by: qa-e2e-playwright
-</playwright_interaction>
-
-### Inspection (5 tools)
-
-<playwright_inspection>
-- `mcp__playwright__browser_snapshot` (none): Accessibility snapshot with element refs. Used by: sparq-analyze, sparq-sync, qa-e2e-playwright
-- `mcp__playwright__browser_take_screenshot` (none): Capture visual screenshot. Used by: sparq-analyze, visual-design-architect
-- `mcp__playwright__browser_console_messages` (none): Retrieve console messages. Used by: sparq-generate-e2e, qa-e2e-playwright
-- `mcp__playwright__browser_network_requests` (none): List network requests. Used by: sparq-generate-e2e, qa-e2e-playwright
-- `mcp__playwright__browser_evaluate` (expression: string): Execute JS in browser. Used by: qa-e2e-playwright
-</playwright_inspection>
-
-### Utility (5 tools)
-
-<playwright_utility>
-- `mcp__playwright__browser_install` (none): Install browser binaries. Used by: (setup)
-- `mcp__playwright__browser_resize` (width: number, height: number): Resize browser viewport. Used by: visual-design-architect, qa-e2e-playwright
-- `mcp__playwright__browser_close` (none): Close browser tab/browser. Used by: qa-e2e-playwright
-- `mcp__playwright__browser_wait_for` (event: string, timeout?: number): Wait for condition. Used by: sparq-sync, qa-e2e-playwright
-- `mcp__playwright__browser_run_code` (code: string): Execute Playwright code snippet. Used by: qa-e2e-playwright
-</playwright_utility>
-
-**Reference**: `playwright-mcp-tools.md`
+Projects need only `@playwright/test` as a dev dependency — no MCP server configuration required.
 
 ---
 
 ## SparQ Agent Subset
 
 <sparq_subset>
-The ~18 MCP tools SparQ agents routinely use (out of 68 total):
+The ~13 MCP tools SparQ agents routinely use (out of 46 total):
 
 **Atlassian — Jira**: `jira_get_issue`, `jira_search_using_jql`
 **Atlassian — Confluence**: `confluence_get_page`, `confluence_search_using_cql`, `confluence_get_page_descendants`
 **Figma**: `get_design_context`, `get_screenshot`, `get_metadata`
-**Playwright**: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_evaluate`
+**Playwright**: CLI-based (`npx playwright screenshot`, `npx playwright test`, inline scripts) — see `playwright-cli-tools.md`
 **TestRail**: `get_cases`, `add_case`, `get_sections`
 **Qase**: `list_cases`, `create_case`, `list_suites`
 **Zephyr Scale**: `get_test_cases`, `create_test_case` (export/publish-results only)
@@ -217,6 +175,6 @@ All other tools are available for export, diagnostics, or advanced workflows but
 - TestRail: 9 tools, Convention-based, `@bun913/mcp-testrail`
 - Qase: 9 tools, Convention-based, `@qase/mcp-server`
 - Zephyr Scale: 7 tools, Verified, `mcp-zephyr-scale`
-- Playwright: 22 tools, Verified, `@playwright/mcp@latest`
-- **Total: 68 tools**
+- Playwright: CLI-based (no MCP server) — see playwright-cli-tools.md
+- **Total: 46 tools**
 </tool_summary>

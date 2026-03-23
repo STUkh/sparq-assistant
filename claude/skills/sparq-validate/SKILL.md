@@ -31,7 +31,7 @@ Validate existing E2E tests for UI drift, stale selectors, broken flows, and tec
 2. **Fetch current UI state** in parallel from available sources (skip unavailable; codebase always works). For >10 test files: launch parallel validation checks per `parallel-execution.md` Pattern 3 (up to 6 Task agents). For <=10 files: run checks sequentially.
    - **Figma**: component names, layout, text content, element hierarchy
    - **Codebase**: component files (using `project.componentFileExtensions`), `data-testid` attrs, route definitions (using `project.routeDiscoveryPattern`)
-   - **Live browser**: actual rendered DOM, element visibility (Playwright MCP, when `e2e.framework` is `playwright`). Not available for Cypress (no MCP); skip silently.
+   - **Live browser**: actual rendered DOM, element visibility (Playwright CLI, when `e2e.framework` is `playwright`). Not available for Cypress; skip silently.
 3. **Compare and detect mismatches**:
    - Selector drift: `data-testid` removed/renamed in source
    - Flow changes: steps reference removed pages/routes
@@ -60,7 +60,7 @@ Report includes: VF-{n} IDs for each finding, severity classification, auto-fix 
 
 ## Fallback Behavior
 
-When sources are unavailable, degrade per `degradation-strategy.md`. Codebase grep always works as baseline. If Figma unavailable: skip visual comparison, note gap. If Playwright MCP unavailable: skip live browser checks, rely on codebase analysis.
+When sources are unavailable, degrade per `degradation-strategy.md`. Codebase grep always works as baseline. If Figma unavailable: skip visual comparison, note gap. If Playwright not installed: skip live browser checks, rely on codebase analysis.
 
 When findings are gathered in parallel, merge by severity (Critical first), assign unified VF-{n} IDs, deduplicate findings with identical selectors.
 
@@ -88,7 +88,7 @@ If multiple sources disagree on a selector or text value, flag as Warning with b
 ```
 /sparq:validate e2e/
 -> Scans 12 test files across all spec directories
--> Fetches current state (codebase + Figma + Playwright MCP in parallel)
+-> Fetches current state (codebase + Figma + Playwright CLI in parallel)
 -> CHECKPOINT: 3 Critical, 5 Warning, 2 Info findings
 -> User picks "B" (critical only) -> applies 3 critical auto-fixes
 -> Re-validates (cycle 1): 0 Critical, 5 Warning, 2 Info remaining

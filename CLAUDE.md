@@ -33,21 +33,19 @@ graph TD
     end
 
     subgraph "External · MCP"
-        Jira & Confluence & Figma & Playwright & TestRail & Qase
+        Jira & Confluence & Figma & TestRail & Qase
     end
 
     RA -->|fetch| Jira & Confluence & Figma
-    AE -->|run| Playwright
-    TV -->|run| Playwright
 ```
 
-> **Note:** Browser preview and screenshot verification require Playwright MCP. Cypress projects use `npx tsc --noEmit` and `npx cypress verify` for smoke checks instead.
+> **Note:** Browser preview and screenshot verification require Playwright installed as a dev dependency (`npx playwright --version` must succeed). Cypress projects use `npx tsc --noEmit` and `npx cypress verify` for smoke checks instead.
 
 - **CLI** (`bin/sparq.mjs` → `bin/lib/`): Pure ESM Node.js installer — init, update, uninstall, clean, doctor, audit, lint, coverage, help. Includes non-blocking npm update check on startup (24h cache at `~/.sparq-assistant/update-check.json`, opt-out via `--no-update-check` or `SPARQ_NO_UPDATE_CHECK=1`)
 - **Agents** (`claude/agents/`): 5 markdown agents with YAML frontmatter. Orchestrator classifies S1–S6, dispatches via structured handoffs (claude/skills/sparq-shared/references/handoff-schema.md)
 - **Skills** (`claude/skills/`): 20 skill directories — QA workflow skills (`/sparq:start`, `/sparq:generate`, `/sparq:generate-manual`, `/sparq:generate-e2e`, `/sparq:manual-to-e2e`, `/sparq:validate`, `/sparq:sync`, `/sparq:refactor`, `/sparq:export`, `/sparq:publish-results`), setup (`/sparq:init`, `/sparq:config`), framework best practices (`/sparq:playwright-best-practices`, `/sparq:cypress-best-practices`), orchestrator internals (`/sparq:analyze`, `/sparq:resume`), API fallback (`/sparq:qase-api`, `/sparq:testrail-api`), prompt guidance (`/sparq:prompt-optimizations`), performance consulting (`/sparq:performance`)
-- **References** (`claude/skills/sparq-shared/references/`): 47 shared docs — allure-patterns.md, codebase-readiness.md, completion-verification.md, config-schema.md, confluence-patterns.md, context-anchoring.md, coverage-iteration.md, cypress-advanced.md, cypress-anti-patterns.md, cypress-architecture.md, cypress-patterns.md, cypress-testing-strategies.md, data-driven-patterns.md, data-model.md, degradation-strategy.md, e2e-common-patterns.md, error-handling.md, figma-patterns.md, handoff-schema.md, jira-patterns.md, local-tms-formats.md, mcp-tool-inventory.md, parallel-execution.md, pattern-adherence.md, performance-patterns.md, playwright-a11y-visual.md, playwright-anti-patterns.md, playwright-assertions.md, playwright-auth-mocking.md, playwright-ci-reporting.md, playwright-mcp-tools.md, playwright-patterns.md, progress-protocol.md, qase-formats.md, qase-sync.md, refresh-patterns.md, resume-protocol-agent.md, resume-protocol.md, test-generation-patterns.md, testrail-formats.md, testrail-sync.md, tms-abstraction.md, token-budget.md, validation-checklist.md, viewport-patterns.md, zephyr-formats.md, zephyr-sync.md
-- **MCP** (`mcp/`): Atlassian (HTTP, OAuth 2.1 browser login — no ENV vars), Figma (HTTP), Playwright (stdio), TestRail (stdio, requires ENV vars), Qase (stdio, requires ENV vars), Zephyr Scale (stdio, requires ENV vars)
+- **References** (`claude/skills/sparq-shared/references/`): 47 shared docs — allure-patterns.md, codebase-readiness.md, completion-verification.md, config-schema.md, confluence-patterns.md, context-anchoring.md, coverage-iteration.md, cypress-advanced.md, cypress-anti-patterns.md, cypress-architecture.md, cypress-patterns.md, cypress-testing-strategies.md, data-driven-patterns.md, data-model.md, degradation-strategy.md, e2e-common-patterns.md, error-handling.md, figma-patterns.md, handoff-schema.md, jira-patterns.md, local-tms-formats.md, mcp-tool-inventory.md, parallel-execution.md, pattern-adherence.md, performance-patterns.md, playwright-a11y-visual.md, playwright-anti-patterns.md, playwright-assertions.md, playwright-auth-mocking.md, playwright-ci-reporting.md, playwright-cli-tools.md, playwright-patterns.md, progress-protocol.md, qase-formats.md, qase-sync.md, refresh-patterns.md, resume-protocol-agent.md, resume-protocol.md, test-generation-patterns.md, testrail-formats.md, testrail-sync.md, tms-abstraction.md, token-budget.md, validation-checklist.md, viewport-patterns.md, zephyr-formats.md, zephyr-sync.md
+- **MCP** (`mcp/`): Atlassian (HTTP, OAuth 2.1 browser login — no ENV vars), Figma (HTTP), TestRail (stdio, requires ENV vars), Qase (stdio, requires ENV vars), Zephyr Scale (stdio, requires ENV vars)
 - **Templates** (`claude/templates/`): 11 output templates — requirements.md, test-case.md, coverage-matrix.md, validation-report.md, execution-plan.md, execution-plan.json, checkpoint.md, refresh-diff.md, jira-coverage-comment.md, quickref.md, run-summary.md
 - **Hooks** (`claude/hooks/`): Exit guard (Stop hook, workflow persistence) + compaction resilience (PreCompact hook, state preservation) — installed by `sparq init`, refreshed by `sparq update`
 - **Rules** (`.claude/rules/`): 5 scoped rule files for path-specific validation (agents, skills, cli, references, tests)

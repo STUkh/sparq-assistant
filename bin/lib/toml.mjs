@@ -75,7 +75,7 @@ function serializeSection(obj, prefix, lines) {
  *   →
  *   [mcp_servers.playwright]
  *   command = "npx"
- *   args = ["-y", "@playwright/mcp@latest"]
+ *   args = ["--version"]
  *
  * @param {object} obj - The object to serialize
  * @returns {string} TOML-formatted string

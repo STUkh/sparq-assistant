@@ -90,7 +90,7 @@ Emitted during workflow resume from interrupted state.
 
 ## Browser Preview (all agents, OPTIONAL)
 
-Emitted when Playwright MCP captures a screenshot for user context.
+Emitted when Playwright CLI captures a screenshot for user context.
 
 - Preview: `[sparq] {phase} Preview: {page description} -- screenshot captured`
 

@@ -127,7 +127,7 @@ You don't need to memorize this -- just use the skill command that matches what 
 
 ### MCP Servers (External Connections)
 
-MCP (Model Context Protocol) servers let SparQ connect to external tools like Jira, Figma, and Playwright. Think of them as plugins that give SparQ access to your project's ecosystem.
+MCP (Model Context Protocol) servers let SparQ connect to external tools like Jira, Figma, and TestRail. Think of them as plugins that give SparQ access to your project's ecosystem. (Playwright uses the CLI directly — no MCP server needed.)
 
 **None of them are required.** SparQ works without any MCP servers -- it just asks you to paste information manually instead of pulling it automatically.
 
@@ -143,9 +143,10 @@ The SparQ installer (`npx sparq-assistant init`) automatically configures the re
 |--------|------------|-----------|
 | Atlassian | Jira + Confluence | No -- you can paste ticket text instead |
 | Figma | Figma designs | No -- SparQ greps your code for selectors instead |
-| Playwright | Browser automation | No -- you run tests manually instead |
 | TestRail | TestRail TMS | No -- generates local XML files instead |
 | Qase | Qase TMS | No -- generates local JSON files instead |
+
+> **Note:** Playwright uses the CLI directly (`npx playwright`) — no MCP server needed. Install it as a dev dependency: `npm install -D @playwright/test`.
 
 ### Checkpoints
 

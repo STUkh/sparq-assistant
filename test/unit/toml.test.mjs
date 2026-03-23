@@ -22,12 +22,12 @@ describe('tomlSerialize', () => {
   it('serializes nested objects as TOML sections', () => {
     const result = tomlSerialize({
       mcp_servers: {
-        playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
+        playwright: { command: 'npx', args: ['-y', '@anthropic-ai/some-mcp@latest'] },
       },
     })
     assert.ok(result.includes('[mcp_servers.playwright]'))
     assert.ok(result.includes('command = "npx"'))
-    assert.ok(result.includes('args = ["-y", "@playwright/mcp@latest"]'))
+    assert.ok(result.includes('args = ["-y", "@anthropic-ai/some-mcp@latest"]'))
   })
 
   it('serializes deeply nested objects', () => {
@@ -73,7 +73,7 @@ describe('tomlSerialize', () => {
   it('serializes multiple MCP servers correctly', () => {
     const result = tomlSerialize({
       mcp_servers: {
-        playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
+        playwright: { command: 'npx', args: ['-y', '@anthropic-ai/some-mcp@latest'] },
         atlassian: { url: 'https://mcp.atlassian.com/v1/mcp' },
       },
     })
@@ -116,7 +116,7 @@ describe('tomlParseMcpSections', () => {
     const content = [
       '[mcp_servers.playwright]',
       'command = "npx"',
-      'args = ["-y", "@playwright/mcp@latest"]',
+      'args = ["-y", "@anthropic-ai/some-mcp@latest"]',
       '',
     ].join('\n')
     const { servers, other } = tomlParseMcpSections(content)
@@ -328,7 +328,7 @@ describe('tomlRemoveMcpSections', () => {
 describe('tomlMergeMcpServers', () => {
   it('adds servers to empty content', () => {
     const { content, added, preserved } = tomlMergeMcpServers('', {
-      playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
+      playwright: { command: 'npx', args: ['-y', '@anthropic-ai/some-mcp@latest'] },
     })
     assert.ok(content.includes('[mcp_servers.playwright]'))
     assert.ok(content.includes('command = "npx"'))
@@ -423,7 +423,7 @@ describe('toml — round-trip', () => {
   it('serialize then parse produces consistent sections', () => {
     const obj = {
       mcp_servers: {
-        playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
+        playwright: { command: 'npx', args: ['-y', '@anthropic-ai/some-mcp@latest'] },
         atlassian: { url: 'https://mcp.atlassian.com' },
       },
     }

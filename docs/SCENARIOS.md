@@ -195,7 +195,7 @@ Generated code presented for review. Manual-only tests (visual, cross-browser, s
 User approves final code. Files are written directly to the project `e2e/` directory.
 
 **Phase 3 -- Verify (Optional)**
-If Playwright MCP browser is available, offers to verify selectors in the live DOM.
+If Playwright CLI is available, offers to verify selectors in the live DOM.
 
 ### Output Files
 
@@ -275,7 +275,7 @@ Reads test files, extracts selectors, URLs, expected text, flow sequences, asser
 
 - **Codebase** -- grep for `data-testid`, route definitions, component files
 - **Figma** -- current component names, layout, text content
-- **Playwright MCP** -- actual rendered DOM (if available)
+- **Playwright CLI** — actual rendered DOM (if available)
 
 **Phase 2 -- Comparison**
 
